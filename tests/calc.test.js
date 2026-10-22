@@ -143,3 +143,51 @@ test('Element mit Fehler wird nicht verteilt, die anderen schon', () => {
   assert.equal(plan.seiten[0].elemente.length, 1);
   nahe(plan.seiten[0].abstand, 150, 'B allein auf 400 cm');
 });
+
+test('Test 4: Gruppe 2×2', () => {
+  const werke = ['e2', 'e3', 'e4', 'e5'].map((id) => ({ id, breite: 30, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 }));
+  const gruppe = { id: 'g1', zeilen: 2, spalten: 2, innenabstand: 5, raster: [['e2', 'e3'], ['e4', 'e5']] };
+  const plan = berechnePlan(planMit({ laenge: 200, elemente: ['g1'], werke, gruppen: [gruppe] }));
+  const g = plan.seiten[0].elemente[0];
+  nahe(g.breite, 65, 'Gruppenbreite');
+  nahe(g.hoehe, 85, 'Gruppenhöhe');
+  nahe(g.oberkante, 192.5, 'Oberkante Gruppe');
+  nahe(g.x, 67.5, 'Gruppe links');
+  nahe(g.x + g.breite, 132.5, 'Gruppe rechts');
+
+  const nagel = (werkId) => g.punkte.find((p) => p.werkId === werkId);
+  nahe(nagel('e2').hoehe, 187.5, 'obere Zeile Höhe');
+  nahe(nagel('e3').hoehe, 187.5, 'obere Zeile Höhe');
+  nahe(nagel('e4').hoehe, 142.5, 'untere Zeile Höhe');
+  nahe(nagel('e5').hoehe, 142.5, 'untere Zeile Höhe');
+  nahe(nagel('e2').x, 82.5, 'linke Spalte x');
+  nahe(nagel('e4').x, 82.5, 'linke Spalte x');
+  nahe(nagel('e3').x, 117.5, 'rechte Spalte x');
+  nahe(nagel('e5').x, 117.5, 'rechte Spalte x');
+  assert.equal(plan.befestigungspunkte.length, 4);
+  assert.ok(plan.befestigungspunkte.every((p) => p.elementId === 'g1'));
+});
+
+test('Gruppe: unterschiedlich grosse Werke werden in der Zelle zentriert', () => {
+  const werke = [
+    { id: 'a', breite: 40, hoehe: 50, anzahlNaegel: 1, abstandOben: 5 },
+    { id: 'b', breite: 20, hoehe: 30, anzahlNaegel: 1, abstandOben: 5 },
+  ];
+  const gruppe = { id: 'g1', zeilen: 2, spalten: 1, innenabstand: 10, raster: [['a'], ['b']] };
+  const plan = berechnePlan(planMit({ laenge: 100, elemente: ['g1'], werke, gruppen: [gruppe] }));
+  const g = plan.seiten[0].elemente[0];
+  nahe(g.breite, 40, 'Spaltenbreite = breitestes Werk');
+  nahe(g.hoehe, 90, '50 + 10 + 30');
+  const b = g.teile.find((t) => t.werkId === 'b');
+  nahe(b.x, 30 + 10, 'b horizontal zentriert');
+  nahe(b.oberkante, 195 - 50 - 10, 'b oben in seiner Zeile (gleich hoch wie Zeile)');
+});
+
+test('Gruppe ohne Werke oder mit ungültigem Werk → Fehler', () => {
+  const leer = { id: 'g1', zeilen: 1, spalten: 2, innenabstand: 5, raster: [[null, null]] };
+  const p1 = berechnePlan(planMit({ laenge: 200, elemente: ['g1'], gruppen: [leer] }));
+  assert.ok(codes(p1.fehler).includes('gruppeLeer'));
+  const kaputt = { id: 'g2', zeilen: 1, spalten: 1, innenabstand: 5, raster: [['x']] };
+  const p2 = berechnePlan(planMit({ laenge: 200, elemente: ['g2'], gruppen: [kaputt], werke: [{ id: 'x', breite: 30, hoehe: 0 }] }));
+  assert.ok(codes(p2.fehler).includes('hoeheUngueltig'));
+});

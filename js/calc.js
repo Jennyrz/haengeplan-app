@@ -146,10 +146,79 @@ function elementAusWerk(werk, mittelhoehe) {
   };
 }
 
+// Gruppe als Raster: Spaltenbreite = breitestes Werk der Spalte, Zeilenhöhe = höchstes Werk der Zeile.
+// Die Gruppe wird als Gesamtrechteck mit Mitte auf M behandelt, jedes Werk in seiner Zelle zentriert.
+function elementAusGruppe(gruppe, daten, mittelhoehe) {
+  const basis = { elementId: gruppe.id, typ: 'gruppe', ok: false, fehler: [], warnungen: [], teile: [], punkte: [] };
+  const { zeilen, spalten } = gruppe;
+  if (!(Number.isInteger(zeilen) && zeilen > 0 && Number.isInteger(spalten) && spalten > 0)) {
+    basis.fehler.push({ code: 'rasterUngueltig', elementId: gruppe.id });
+    return basis;
+  }
+  const g = istZahl(gruppe.innenabstand) && gruppe.innenabstand >= 0 ? gruppe.innenabstand : STANDARD.innenabstand;
+
+  const zellen = [];
+  for (let r = 0; r < zeilen; r++) {
+    for (let c = 0; c < spalten; c++) {
+      const werkId = gruppe.raster?.[r]?.[c];
+      if (!werkId) continue;
+      const werk = finde(daten.werke, werkId);
+      if (!werk) {
+        basis.fehler.push({ code: 'werkUnbekannt', elementId: gruppe.id, werkId });
+        continue;
+      }
+      const pruefung = pruefeWerk(werk);
+      basis.fehler.push(...mitKontext(pruefung.fehler, { elementId: gruppe.id, werkId }));
+      zellen.push({ r, c, werk });
+    }
+  }
+  if (zellen.length === 0 && basis.fehler.length === 0) {
+    basis.fehler.push({ code: 'gruppeLeer', elementId: gruppe.id });
+  }
+  if (basis.fehler.length > 0) return basis;
+
+  const spaltenBreite = new Array(spalten).fill(0);
+  const zeilenHoehe = new Array(zeilen).fill(0);
+  for (const { r, c, werk } of zellen) {
+    spaltenBreite[c] = Math.max(spaltenBreite[c], werk.breite);
+    zeilenHoehe[r] = Math.max(zeilenHoehe[r], werk.hoehe);
+  }
+  const summe = (liste) => liste.reduce((s, x) => s + x, 0);
+  const breite = summe(spaltenBreite) + (spalten - 1) * g;
+  const hoehe = summe(zeilenHoehe) + (zeilen - 1) * g;
+  const oberkante = mittelhoehe + hoehe / 2;
+
+  // Linke Kante jeder Spalte (ab linker Gruppenkante) und Abstand jeder Zeile von der Gruppen-Oberkante
+  const spaltenLinks = spaltenBreite.map((_, c) => summe(spaltenBreite.slice(0, c)) + c * g);
+  const zeilenOben = zeilenHoehe.map((_, r) => summe(zeilenHoehe.slice(0, r)) + r * g);
+
+  for (const { r, c, werk } of zellen) {
+    const mitteY = oberkante - zeilenOben[r] - zeilenHoehe[r] / 2;
+    const mitteX = spaltenLinks[c] + spaltenBreite[c] / 2;
+    const w = berechneEinzelwerk(werk, { mittelhoehe, mitteY });
+    basis.warnungen.push(...mitKontext(w.warnungen, { elementId: gruppe.id, werkId: werk.id }));
+    basis.teile.push({
+      werkId: werk.id,
+      typ: 'werk',
+      xRel: mitteX - werk.breite / 2,
+      breite: werk.breite,
+      hoehe: werk.hoehe,
+      oberkante: w.oberkante,
+    });
+    for (const n of w.naegel) {
+      basis.punkte.push({ werkId: werk.id, nr: n.nr, art: n.art, xRel: mitteX + n.xVersatz, hoehe: n.hoehe });
+    }
+  }
+
+  return { ...basis, ok: true, breite, hoehe, oberkante, unterkante: oberkante - hoehe };
+}
+
 // Berechnet ein Element anhand seiner id (Werk, Gruppe oder Screen).
 export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
   const werk = finde(daten.werke, id);
   if (werk) return elementAusWerk(werk, mittelhoehe);
+  const gruppe = finde(daten.gruppen, id);
+  if (gruppe) return elementAusGruppe(gruppe, daten, mittelhoehe);
   return {
     elementId: id,
     typ: 'unbekannt',
