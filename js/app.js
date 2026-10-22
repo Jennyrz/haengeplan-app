@@ -1,7 +1,8 @@
 // Oberfläche: zeigt die Formulare, schreibt Eingaben in den Plan, ruft calc.js auf und zeigt die Ergebnisse.
 // Die Rechnung selbst steckt ausschliesslich in calc.js.
 
-import { berechnePlan, formatCm } from './calc.js';
+import { berechnePlan, einstellungen, formatCm } from './calc.js';
+import { erzeugeVorschau } from './vorschau.js';
 import { t } from './texte.js';
 import * as D from './daten.js';
 
@@ -258,8 +259,24 @@ function renderTabelle(ergebnis) {
   $('#ergebnis').innerHTML = `<h2>${esc(t('abschnittErgebnis'))}</h2>${abstand}${tabelle}`;
 }
 
-function renderVorschau() {
-  $('#vorschau').innerHTML = `<h2>${esc(t('abschnittVorschau'))}</h2>`;
+function renderVorschau(ergebnis) {
+  const seite = ergebnis.seiten[0];
+  const e = einstellungen(plan);
+  const svg = seite
+    ? erzeugeVorschau(seite, {
+        mittelhoehe: e.mittelhoehe,
+        minBodenabstand: e.minBodenabstand,
+        name,
+        texte: { mittellinie: t('vorschauMittellinie', { m: e.mittelhoehe }), beschreibung: t('vorschauBeschreibung') },
+      })
+    : '';
+  $('#vorschau').innerHTML = `<h2>${esc(t('abschnittVorschau'))}</h2>
+    <div class="vorschau-rahmen">${svg}</div>
+    <div class="legende">
+      <span><i class="werk"></i>${esc(t('vorschauLegendeWerk'))}</span>
+      <span><i class="screen"></i>${esc(t('vorschauLegendeScreen'))}</span>
+      <span><i class="punkt"></i>${esc(t('vorschauLegendePunkt'))}</span>
+    </div>`;
 }
 
 function renderErgebnis() {
