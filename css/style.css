@@ -296,7 +296,7 @@ th .kurz { display: none; }
 
 /* Anmeldung */
 [hidden] { display: none !important; }
-.anmeldung { padding: 32px 16px; }
+.anmeldung { padding: 32px 16px; background: none; border: none; }
 .anmeldeformular {
   display: flex;
   flex-direction: column;
