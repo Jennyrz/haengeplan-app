@@ -63,13 +63,26 @@ Am Ende muss `fail 0` stehen. Die Tests prüfen alle Testfälle aus `CLAUDE.md` 
    - **Hinweise:** gelb = Warnung (Berechnung läuft trotzdem), rot = Fehler (Element wird nicht berechnet). Die Zahl am Wand-Reiter zeigt, wie viele Hinweise es auf dieser Wand gibt.
    - **Befestigungspunkte:** pro Nagel/Schraube x ab linker Wandkante und Höhe ab Boden, auf 0,5 cm gerundet
 
-## 4. Speichern
+## 4. Vor Ort aufhängen (Handy)
+
+Oben auf **„Aufhängen“** tippen. Die App zeigt dann nur noch:
+- oben die Wand (Auswahl) und die Nummern aller Elemente dieser Wand (grün = erledigt),
+- eine kleine Wandskizze, das aktuelle Werk blau,
+- pro Nagel **ein Mass** (ab rechter Kante des vorherigen Bildes, beim ersten ab linker Wandkante) und die **Höhe**.
+
+Fehlt ein Mass (a beim Bild, v/s beim Screen), steht ein gelbes Feld da: am Bild messen, eintragen, die Höhe rechnet sich neu.
+**„✓ Hängt – weiter“** setzt das Häkchen (merkt sich das Handy) und geht zum nächsten Werk. Der Bildschirm bleibt an.
+Zurück zur Planung mit **„‹ Planen“**.
+
+Werke, die nicht gehängt werden sollen: in der Werkliste **„Verbergen“** – sie behalten ihre Daten und ihren Platz.
+
+## 5. Speichern
 
 Alles wird **automatisch gespeichert**, kurz nach jeder Änderung (oben steht „Gespeichert“). Es gibt keinen Speichern-Knopf.
 
 Gespeichert wird online (Supabase). Alle Geräte und das ganze Team sehen denselben Stand – nach dem Neuladen der Seite. Bearbeiten zwei Personen gleichzeitig dieselbe Ausstellung, gilt die zuletzt gespeicherte Änderung. Ohne Internet erscheint „Speichern fehlgeschlagen!“.
 
-## 5. Ordnerstruktur
+## 6. Ordnerstruktur
 
 | Datei | Inhalt |
 |---|---|
