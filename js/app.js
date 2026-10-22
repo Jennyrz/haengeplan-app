@@ -14,6 +14,7 @@ let planId = null;
 let planListe = []; // [{ id, name, geaendert }]
 let aktiveSeiteId = plan.waende[0].seiten[0].id;
 let werkFilter = 'alle';
+let person = null; // angemeldete Person { email } (nur online)
 
 const $ = (selektor) => document.querySelector(selektor);
 
@@ -136,7 +137,8 @@ function renderKopf() {
       ${knopf('ausstellungDuplizieren', esc(t('ausstellungDuplizieren')))}
       ${knopf('ausstellungLoeschen', esc(t('ausstellungLoeschen')), { klasse: 'gefahr' })}
     </div>
-    <span class="status" id="status" role="status"></span>`;
+    <span class="status" id="status" role="status"></span>
+    ${person ? `<span class="person">${esc(t('angemeldetAls', { email: person.email }))} ${knopf('abmelden', esc(t('abmelden')))}</span>` : ''}`;
 }
 
 // --- Formulare -------------------------------------------------------------
@@ -582,6 +584,12 @@ const aktionen = {
     else await legePlanAn(D.neuerPlan());
     return false;
   },
+  abmelden: async () => {
+    await ausstehendesSpeichern();
+    await S.abmelden();
+    location.reload();
+    return false;
+  },
 };
 
 async function fuehreAus(aktion, id) {
@@ -679,6 +687,69 @@ window.addEventListener('pagehide', () => {
   if (speicherTimer) speichernJetzt();
 });
 
+// --- Anmeldung -------------------------------------------------------------
+
+// modus: 'anmelden' | 'vergessen' | 'festlegen'
+function renderAnmeldung(modus, meldung = '', problem = false) {
+  const felder = {
+    anmelden: `${anmeldeFeld('email', 'email', 'username')}${anmeldeFeld('passwort', 'password', 'current-password')}`,
+    vergessen: anmeldeFeld('email', 'email', 'username'),
+    festlegen: anmeldeFeld('neuesPasswort', 'password', 'new-password'),
+  }[modus];
+  const titel = { anmelden: 'anmeldenTitel', vergessen: 'passwortVergessenTitel', festlegen: 'passwortFestlegenTitel' }[modus];
+  const hilfe = { anmelden: 'anmeldenHilfe', vergessen: 'passwortVergessenHilfe', festlegen: 'passwortFestlegenHilfe' }[modus];
+  const absenden = { anmelden: 'anmelden', vergessen: 'linkSenden', festlegen: 'passwortSpeichern' }[modus];
+  const link = {
+    anmelden: `<button type="button" class="link" data-modus="vergessen">${esc(t('passwortVergessen'))}</button>`,
+    vergessen: `<button type="button" class="link" data-modus="anmelden">${esc(t('zurueckZurAnmeldung'))}</button>`,
+    festlegen: '',
+  }[modus];
+  const el = $('#anmeldung');
+  el.hidden = false;
+  el.innerHTML = `<form class="anmeldeformular" data-modus="${modus}">
+      <h2>${esc(t(titel))}</h2>
+      <p class="hilfe">${esc(t(hilfe))}</p>
+      ${felder}
+      <p class="meldung${problem ? ' problem' : ''}" role="status">${esc(meldung)}</p>
+      <button type="submit" class="primaer">${esc(t(absenden))}</button>
+      ${link}
+    </form>`;
+  el.querySelector('input')?.focus();
+}
+
+function anmeldeFeld(text, typ, autocomplete) {
+  return `<label class="feld"><span>${esc(t(text))}</span><input type="${typ}" name="${typ}" autocomplete="${autocomplete}" required></label>`;
+}
+
+document.addEventListener('submit', async (e) => {
+  const form = e.target.closest('.anmeldeformular');
+  if (!form) return;
+  e.preventDefault();
+  const modus = form.dataset.modus;
+  const email = form.elements.email?.value.trim();
+  const passwort = form.elements.password?.value;
+  if (modus === 'festlegen' && passwort.length < 8) return renderAnmeldung(modus, t('passwortZuKurz'), true);
+  form.querySelector('button[type="submit"]').disabled = true;
+  form.querySelector('.meldung').textContent = t('bitteWarten');
+  try {
+    if (modus === 'anmelden') await S.anmelden(email, passwort);
+    if (modus === 'festlegen') await S.passwortFestlegen(passwort);
+    if (modus === 'vergessen') {
+      await S.passwortVergessen(email);
+      return renderAnmeldung('vergessen', t('linkGesendet'));
+    }
+  } catch {
+    const fehler = { anmelden: 'anmeldenFehlgeschlagen', festlegen: 'passwortFehlgeschlagen', vergessen: 'speichernFehlgeschlagen' }[modus];
+    return renderAnmeldung(modus, t(fehler), true);
+  }
+  starteApp();
+});
+
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('.anmeldeformular button[data-modus]');
+  if (k) renderAnmeldung(k.dataset.modus);
+});
+
 // --- Start -----------------------------------------------------------------
 
 async function start() {
@@ -686,7 +757,25 @@ async function start() {
   document.querySelectorAll('[data-text]').forEach((el) => {
     el.textContent = t(el.dataset.text);
   });
-  await ladeListe();
+  if (S.istOnline) {
+    person = await S.angemeldetePerson();
+    if (S.mussPasswortFestlegen && person) return renderAnmeldung('festlegen');
+    if (!person) return renderAnmeldung('anmelden');
+  }
+  await starteApp();
+}
+
+async function starteApp() {
+  if (S.istOnline) person = await S.angemeldetePerson();
+  $('#anmeldung').hidden = true;
+  $('#app').hidden = false;
+  $('#sprungleiste').hidden = false;
+  try {
+    await ladeListe();
+  } catch {
+    $('#app').innerHTML = `<p class="meldung problem">${esc(t('listeFehlgeschlagen'))}</p>`;
+    return;
+  }
   const zuletzt = S.zuletztGeoeffnet();
   const id = planListe.some((p) => p.id === zuletzt) ? zuletzt : planListe[0]?.id;
   if (id) await oeffnePlan(id);

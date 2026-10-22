@@ -293,3 +293,25 @@ th .kurz { display: none; }
   .werkzeug-knoepfe button { flex: 1 1 auto; }
   .filter { max-width: none; }
 }
+
+/* Anmeldung */
+[hidden] { display: none !important; }
+.anmeldung { padding: 32px 16px; }
+.anmeldeformular {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 20px;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+}
+.anmeldeformular .feld { display: flex; flex-direction: column; gap: 4px; }
+.anmeldeformular input { font-size: 16px; padding: 8px; }
+.anmeldeformular .hilfe { margin: 0; color: var(--text-leise); font-size: 13px; }
+.meldung { margin: 0; font-size: 13px; color: var(--text-leise); min-height: 1em; }
+.meldung.problem { color: var(--fehler); font-weight: 600; }
+button.link { background: none; border: none; color: var(--akzent); padding: 0; text-decoration: underline; align-self: flex-start; }
+.person { font-size: 12px; color: var(--text-leise); display: flex; align-items: center; gap: 6px; }
