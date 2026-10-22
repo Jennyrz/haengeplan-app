@@ -1,7 +1,7 @@
 // Automatische Tests für js/calc.js. Ausführen mit: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { berechneEinzelwerk, formatCm, rundeAufHalbe } from '../js/calc.js';
+import { berechneEinzelwerk, berechnePlan, formatCm, rundeAufHalbe } from '../js/calc.js';
 
 // Vergleich mit kleiner Toleranz, weil Kommazahlen im Computer nicht immer exakt sind.
 function nahe(ist, soll, text) {
@@ -75,4 +75,71 @@ test('fehlende oder nicht-positive Masse → Fehler, keine Berechnung', () => {
   assert.equal(r.ok, false);
   assert.deepEqual(codes(r.fehler), ['breiteUngueltig', 'hoeheUngueltig']);
   assert.deepEqual(r.naegel, []);
+});
+
+// Hilfsfunktion: Plan mit einer Wand und einer Seite
+function planMit({ laenge, hoehe = 250, elemente, werke = [], gruppen = [], screens = [], ausstellung = {} }) {
+  return {
+    formatVersion: 1,
+    ausstellung: { name: 'Test', mittelhoehe: 150, mindestabstand: 10, minBodenabstand: 30, ...ausstellung },
+    waende: [{ id: 'w1', name: 'Wand 1', laenge, hoehe, seiten: [{ id: 'w1-a', bezeichnung: 'innen', bespielbar: true, elemente }] }],
+    werke,
+    gruppen,
+    screens,
+  };
+}
+
+const WERK_TEST1 = { id: 'A', breite: 60, hoehe: 80, anzahlNaegel: 1, abstandOben: 10, aufhaengerAbstand: null };
+const WERK_TEST2 = { id: 'B', breite: 100, hoehe: 70, anzahlNaegel: 2, abstandOben: 8, aufhaengerAbstand: 60 };
+
+test('Test 3: Verteilung auf der Wand', () => {
+  const plan = berechnePlan(planMit({ laenge: 400, elemente: ['A', 'B'], werke: [WERK_TEST1, WERK_TEST2] }));
+  const seite = plan.seiten[0];
+  nahe(seite.abstand, 80, 'Abstand');
+  const [a, b] = seite.elemente;
+  nahe(a.x, 80, 'A links');
+  nahe(a.x + a.breite, 140, 'A rechts');
+  nahe(a.punkte[0].x, 110, 'A Nagel x');
+  nahe(a.punkte[0].hoehe, 180, 'A Nagel Höhe');
+  nahe(b.x, 220, 'B links');
+  nahe(b.x + b.breite, 320, 'B rechts');
+  nahe(b.punkte[0].x, 240, 'B Nagel 1 x');
+  nahe(b.punkte[1].x, 300, 'B Nagel 2 x');
+  nahe(b.punkte[0].hoehe, 177, 'B Nagel Höhe');
+  assert.equal(plan.befestigungspunkte.length, 3);
+  assert.deepEqual(plan.befestigungspunkte[0], {
+    wandId: 'w1', seiteId: 'w1-a', elementId: 'A', werkId: 'A', nr: 1, art: 'nagel', x: 110, hoehe: 180,
+  });
+  assert.deepEqual(codes(plan.warnungen), []);
+});
+
+test('Test 7: passt nicht auf die Wand', () => {
+  const w1 = { id: 'A', breite: 60, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 };
+  const w2 = { id: 'B', breite: 60, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 };
+  const plan = berechnePlan(planMit({ laenge: 100, elemente: ['A', 'B'], werke: [w1, w2] }));
+  assert.ok(codes(plan.warnungen).includes('passtNicht'));
+  assert.equal(plan.befestigungspunkte.length, 2, 'Berechnung läuft trotzdem');
+});
+
+test('Abstand kleiner als Mindestabstand → Warnung', () => {
+  const w1 = { id: 'A', breite: 60, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 };
+  const w2 = { id: 'B', breite: 60, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 };
+  const plan = berechnePlan(planMit({ laenge: 135, elemente: ['A', 'B'], werke: [w1, w2] }));
+  assert.ok(codes(plan.warnungen).includes('abstandZuKlein'));
+  assert.ok(!codes(plan.warnungen).includes('passtNicht'));
+});
+
+test('Oberkante über Wandhöhe und Unterkante zu tief → Warnungen', () => {
+  const gross = { id: 'A', breite: 60, hoehe: 260, anzahlNaegel: 1, abstandOben: 10 };
+  const plan = berechnePlan(planMit({ laenge: 300, hoehe: 250, elemente: ['A'], werke: [gross] }));
+  assert.ok(codes(plan.warnungen).includes('zuHoch'));
+  assert.ok(codes(plan.warnungen).includes('zuTief'));
+});
+
+test('Element mit Fehler wird nicht verteilt, die anderen schon', () => {
+  const kaputt = { id: 'A', breite: 0, hoehe: 40, anzahlNaegel: 1, abstandOben: 5 };
+  const plan = berechnePlan(planMit({ laenge: 400, elemente: ['A', 'B'], werke: [kaputt, WERK_TEST2] }));
+  assert.ok(codes(plan.fehler).includes('breiteUngueltig'));
+  assert.equal(plan.seiten[0].elemente.length, 1);
+  nahe(plan.seiten[0].abstand, 150, 'B allein auf 400 cm');
 });

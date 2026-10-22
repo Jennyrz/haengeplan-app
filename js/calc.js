@@ -102,3 +102,174 @@ export function berechneEinzelwerk(werk, { mittelhoehe = STANDARD.mittelhoehe, m
     naegel,
   };
 }
+
+// --- Elemente (Einzelwerk, Gruppe, Screen) ---------------------------------
+// Jedes Element liefert sein Gesamtrechteck (breite, hoehe, oberkante, unterkante),
+// seine sichtbaren Teile (teile) und seine Befestigungspunkte (punkte).
+// x-Werte sind hier noch relativ zur linken Kante des Elements (xRel).
+
+function finde(liste, id) {
+  return (liste || []).find((x) => x.id === id);
+}
+
+function mitKontext(liste, kontext) {
+  return liste.map((w) => ({ ...kontext, ...w }));
+}
+
+function elementAusWerk(werk, mittelhoehe) {
+  const r = berechneEinzelwerk(werk, { mittelhoehe });
+  const kontext = { elementId: werk.id, werkId: werk.id };
+  const basis = {
+    elementId: werk.id,
+    typ: 'werk',
+    ok: r.ok,
+    fehler: mitKontext(r.fehler, kontext),
+    warnungen: mitKontext(r.warnungen, kontext),
+    teile: [],
+    punkte: [],
+  };
+  if (!r.ok) return basis;
+  return {
+    ...basis,
+    breite: r.breite,
+    hoehe: r.hoehe,
+    oberkante: r.oberkante,
+    unterkante: r.unterkante,
+    teile: [{ werkId: werk.id, typ: 'werk', xRel: 0, breite: r.breite, hoehe: r.hoehe, oberkante: r.oberkante }],
+    punkte: r.naegel.map((n) => ({
+      werkId: werk.id,
+      nr: n.nr,
+      art: n.art,
+      xRel: r.breite / 2 + n.xVersatz,
+      hoehe: n.hoehe,
+    })),
+  };
+}
+
+// Berechnet ein Element anhand seiner id (Werk, Gruppe oder Screen).
+export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
+  const werk = finde(daten.werke, id);
+  if (werk) return elementAusWerk(werk, mittelhoehe);
+  return {
+    elementId: id,
+    typ: 'unbekannt',
+    ok: false,
+    fehler: [{ code: 'elementUnbekannt', elementId: id }],
+    warnungen: [],
+    teile: [],
+    punkte: [],
+  };
+}
+
+// --- Verteilung auf der Wand -----------------------------------------------
+
+// Gleichmässige Verteilung: gleiche Abstände zwischen den Elementen und zu beiden Wandenden.
+// Liefert den Abstand und die linke Kante jedes Elements (ab linker Wandkante).
+export function verteile(breiten, laenge) {
+  const summe = breiten.reduce((s, b) => s + b, 0);
+  const abstand = (laenge - summe) / (breiten.length + 1);
+  const positionen = [];
+  let x = abstand;
+  for (const b of breiten) {
+    positionen.push(x);
+    x += b + abstand;
+  }
+  return { abstand, positionen };
+}
+
+// Einstellungen der Ausstellung, fehlende Werte mit Standardwerten ergänzt.
+export function einstellungen(daten) {
+  const a = daten.ausstellung || {};
+  return {
+    mittelhoehe: istZahl(a.mittelhoehe) ? a.mittelhoehe : STANDARD.mittelhoehe,
+    mindestabstand: istZahl(a.mindestabstand) ? a.mindestabstand : STANDARD.mindestabstand,
+    minBodenabstand: istZahl(a.minBodenabstand) ? a.minBodenabstand : STANDARD.minBodenabstand,
+  };
+}
+
+// Berechnet eine Wandseite: Elemente in der gespeicherten Reihenfolge, gleichmässig verteilt.
+// Alle x-Werte im Ergebnis gelten ab der linken Wandkante (so wie man vor der Wand steht).
+export function berechneSeite(daten, wand, seite) {
+  const e = einstellungen(daten);
+  const ort = { wandId: wand.id, seiteId: seite.id };
+  const elemente = (seite.elemente || []).map((id) => berechneElement(id, daten, e.mittelhoehe));
+  const fehler = elemente.flatMap((el) => mitKontext(el.fehler, ort));
+  const warnungen = [];
+
+  const ergebnis = {
+    ...ort,
+    laenge: wand.laenge,
+    hoehe: wand.hoehe,
+    abstand: null,
+    elemente: [],
+    befestigungspunkte: [],
+    warnungen,
+    fehler,
+  };
+
+  if (!istPositiv(wand.laenge)) {
+    fehler.push({ ...ort, code: 'wandLaengeUngueltig' });
+    return ergebnis;
+  }
+
+  const platziert = elemente.filter((el) => el.ok);
+  if (platziert.length === 0) return ergebnis;
+
+  const { abstand, positionen } = verteile(platziert.map((el) => el.breite), wand.laenge);
+  ergebnis.abstand = abstand;
+
+  if (abstand < 0) {
+    warnungen.push({ ...ort, code: 'passtNicht', werte: { abstand } });
+  } else if (abstand < e.mindestabstand) {
+    warnungen.push({ ...ort, code: 'abstandZuKlein', werte: { abstand, mindestabstand: e.mindestabstand } });
+  }
+
+  platziert.forEach((el, i) => {
+    const xLinks = positionen[i];
+    const kontext = { ...ort, elementId: el.elementId };
+    warnungen.push(...mitKontext(el.warnungen, ort));
+    if (istPositiv(wand.hoehe) && el.oberkante > wand.hoehe) {
+      warnungen.push({ ...kontext, code: 'zuHoch', werte: { oberkante: el.oberkante, wandhoehe: wand.hoehe } });
+    }
+    if (el.unterkante < e.minBodenabstand) {
+      warnungen.push({ ...kontext, code: 'zuTief', werte: { unterkante: el.unterkante, minBodenabstand: e.minBodenabstand } });
+    }
+    const punkte = el.punkte.map((p) => ({ ...p, x: xLinks + p.xRel }));
+    ergebnis.elemente.push({
+      ...el,
+      x: xLinks,
+      teile: el.teile.map((t) => ({ ...t, x: xLinks + t.xRel })),
+      punkte,
+    });
+    for (const p of punkte) {
+      ergebnis.befestigungspunkte.push({
+        ...ort,
+        elementId: el.elementId,
+        werkId: p.werkId,
+        nr: p.nr,
+        art: p.art,
+        x: p.x,
+        hoehe: p.hoehe,
+      });
+    }
+  });
+
+  return ergebnis;
+}
+
+// Berechnet den ganzen Plan (alle Wände und bespielbaren Seiten).
+export function berechnePlan(daten) {
+  const seiten = [];
+  for (const wand of daten.waende || []) {
+    for (const seite of wand.seiten || []) {
+      if (seite.bespielbar === false) continue;
+      seiten.push(berechneSeite(daten, wand, seite));
+    }
+  }
+  return {
+    seiten,
+    warnungen: seiten.flatMap((s) => s.warnungen),
+    fehler: seiten.flatMap((s) => s.fehler),
+    befestigungspunkte: seiten.flatMap((s) => s.befestigungspunkte),
+  };
+}
