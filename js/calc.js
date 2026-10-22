@@ -383,23 +383,26 @@ export function berechneSeite(daten, wand, seite) {
   return ergebnis;
 }
 
-// Hängeanleitung mit kurzen Massen (Lücken-Methode) für eine berechnete Wandseite.
-// Statt „x ab linker Wandkante“: Lücke zum vorherigen Element (bzw. zur Wandkante) messen,
-// dort ist die linke Kante des Elements; die Nägel liegen dann „abKante“ cm rechts davon.
-// Liefert { schritte: [{ elementId, typ, luecke, breite, teile, naegel }], rest } oder null.
+// Hängeanleitung mit kurzen Massen für eine berechnete Wandseite.
+// Jeder Nagel wird ab einer sichtbaren Kante gemessen: beim ersten Element ab der linken Wandkante,
+// sonst ab der rechten Kante des vorherigen Elements (bei Gruppen: äusserstes Bild, beim Pult: das Pult selbst).
+// Liefert { schritte: [{ elementId, typ, vorherId, naegel: [{ werkId, nr, art, ab, hoehe }], pultAb }], rest } oder null.
 export function haengeSchritte(seite) {
   if (!seite || !seite.elemente || seite.elemente.length === 0) return null;
-  const els = seite.elemente;
-  const schritte = els.map((el, i) => ({
-    elementId: el.elementId,
-    typ: el.typ,
-    luecke: el.x - (i === 0 ? 0 : els[i - 1].x + els[i - 1].breite),
-    breite: el.breite,
-    teile: el.teile.map((t) => ({ werkId: t.werkId, typ: t.typ, abKante: t.x - el.x, breite: t.breite })),
-    naegel: el.punkte.map((p) => ({ werkId: p.werkId, nr: p.nr, art: p.art, abKante: p.x - el.x, hoehe: p.hoehe })),
-  }));
-  const letztes = els[els.length - 1];
-  return { schritte, rest: seite.laenge - (letztes.x + letztes.breite) };
+  const rechteKante = (el) => Math.max(...el.teile.map((t) => t.x + t.breite));
+  const schritte = seite.elemente.map((el, i) => {
+    const vorher = i === 0 ? null : seite.elemente[i - 1];
+    const bezug = vorher ? rechteKante(vorher) : 0;
+    return {
+      elementId: el.elementId,
+      typ: el.typ,
+      vorherId: vorher ? vorher.elementId : null,
+      naegel: el.punkte.map((p) => ({ werkId: p.werkId, nr: p.nr, art: p.art, ab: p.x - bezug, hoehe: p.hoehe })),
+      pultAb: el.typ === 'pult' ? el.teile[0].x - bezug : null,
+    };
+  });
+  const letztes = seite.elemente[seite.elemente.length - 1];
+  return { schritte, rest: seite.laenge - rechteKante(letztes) };
 }
 
 // Berechnet den ganzen Plan (alle Wände und bespielbaren Seiten).

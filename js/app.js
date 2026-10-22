@@ -374,22 +374,22 @@ function renderHinweise(ergebnis) {
   $('#hinweise').innerHTML = `<h2>${esc(t('abschnittHinweise'))}${anzahl}</h2>${liste}${weitere}`;
 }
 
-// Hängeanleitung mit kurzen Massen (Lücken-Methode)
+// Hängeanleitung: jeder Nagel mit einem Mass ab der vorherigen sichtbaren Kante
 function anleitung(seite) {
   const a = haengeSchritte(seite);
   if (!a) return '';
   const art = (code) => t(code).charAt(0).toUpperCase() + t(code).slice(1);
   const punkte = a.schritte
     .map((s, i) => {
-      const kopf = t(i === 0 ? 'schrittErster' : 'schrittWeiter', { luecke: s.luecke, name: name(s.elementId) });
-      let details;
-      if (s.typ === 'pult') {
-        details = [t('schrittPult', { breite: s.breite, ab: s.teile[0].abKante })];
-      } else if (s.typ === 'gruppe') {
-        details = s.naegel.map((n) => t('schrittNagelGruppe', { werk: name(n.werkId), art: art(n.art), nr: String(n.nr), ab: n.abKante, hoehe: n.hoehe }));
-      } else {
-        details = s.naegel.map((n) => t('schrittNagel', { art: art(n.art), nr: String(n.nr), ab: n.abKante, hoehe: n.hoehe }));
-      }
+      const kopf = i === 0 ? t('schrittErster', { name: name(s.elementId) }) : t('schrittWeiter', { name: name(s.elementId), vorher: name(s.vorherId) });
+      const details =
+        s.typ === 'pult'
+          ? [t('schrittPult', { ab: s.pultAb })]
+          : s.naegel.map((n) =>
+              s.typ === 'gruppe'
+                ? t('schrittNagelGruppe', { werk: name(n.werkId), art: art(n.art), nr: String(n.nr), ab: n.ab, hoehe: n.hoehe })
+                : t('schrittNagel', { art: art(n.art), nr: String(n.nr), ab: n.ab, hoehe: n.hoehe }),
+            );
       return `<li><strong>${esc(kopf)}</strong><ul>${details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></li>`;
     })
     .join('');

@@ -240,12 +240,27 @@ test('Pult belegt Länge plus Freiraum, keine Nägel, keine Bodenwarnung', () =>
   assert.equal(e.warnungen.length, 0);
 });
 
-test('Hängeanleitung (Lücken-Methode) zu Test 3: kurze Masse statt x ab Wandkante', () => {
+test('Hängeanleitung zu Test 3: jeder Nagel ab der rechten Kante des vorherigen Werks', () => {
   const plan = berechnePlan(planMit({ laenge: 400, elemente: ['A', 'B'], werke: [WERK_TEST1, WERK_TEST2] }));
   const { schritte, rest } = haengeSchritte(plan.seiten[0]);
-  nahe(schritte[0].luecke, 80, 'A: 80 cm ab linker Wandkante');
-  nahe(schritte[0].naegel[0].abKante, 30, 'A: Nagel 30 cm rechts der Bildkante');
-  nahe(schritte[1].luecke, 80, 'B: 80 cm Lücke nach A');
-  assert.deepEqual(schritte[1].naegel.map((n) => n.abKante), [20, 80]);
-  nahe(rest, 80, 'Kontrolle: 80 cm bis zur rechten Wandkante');
+  nahe(schritte[0].naegel[0].ab, 110, 'A: Nagel 110 cm ab linker Wandkante');
+  assert.equal(schritte[1].vorherId, 'A');
+  assert.deepEqual(schritte[1].naegel.map((n) => n.ab), [100, 160]); // B-Nägel 240 und 300, A endet bei 140
+  nahe(rest, 80, 'Kontrolle: 80 cm von B bis zur rechten Wandkante');
+});
+
+test('Hängeanleitung: nach dem Pult wird ab dem Pult selbst gemessen, nicht ab dem freien Bereich', () => {
+  const daten = {
+    ausstellung: { mittelhoehe: 150 },
+    waende: [{ id: 'w1', laenge: 400, hoehe: 250, seiten: [{ id: 'w1-a', elemente: ['p-pult', 'A'] }] }],
+    werke: [WERK_TEST1],
+    gruppen: [],
+    screens: [],
+    pulte: [{ id: 'p-pult', breite: 100, tiefe: 60, hoehe: 100, freiraum: 50 }],
+  };
+  // Pultbereich 200 + Werk 60 = 260; Abstand (400 − 260) / 3 ≈ 46,67
+  const { schritte } = haengeSchritte(berechnePlan(daten).seiten[0]);
+  const a = 140 / 3;
+  nahe(schritte[0].pultAb, a + 50, 'linke Pultkante ab Wandkante');
+  nahe(schritte[1].naegel[0].ab, 50 + a + 30, 'Nagel ab rechter Pultkante: Freiraum + Abstand + halbe Bildbreite');
 });
