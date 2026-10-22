@@ -182,6 +182,27 @@ export const TEXTE = {
     ladenFehlgeschlagen: 'Die Ausstellung konnte nicht geladen werden.',
     listeFehlgeschlagen: 'Die Ausstellungen konnten nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.',
 
+    // Aufhänge-Modus (vor Ort, Handy)
+    aufhaengenStarten: 'Aufhängen',
+    aufhaengenZurueck: '‹ Planen',
+    aufhaengenWand: 'Wand',
+    aufhaengenFortschritt: '{nr} von {anzahl}',
+    aufhaengenAbWand: 'ab linker Wandkante',
+    aufhaengenAbKante: 'ab rechter Kante von „{name}“',
+    aufhaengenHoehe: 'Höhe',
+    aufhaengenFehlt: 'Bitte zuerst messen und eintragen:',
+    aufhaengenPult: 'Pult aufstellen: linke Pultkante bei',
+    aufhaengenPultFrei: 'Davor und daneben kein Werk.',
+    aufhaengenWeiter: '✓ Hängt – weiter',
+    aufhaengenFertigKnopf: '✓ Hängt – fertig',
+    aufhaengenVor: '◀ Zurück',
+    aufhaengenErledigt: 'erledigt',
+    aufhaengenFertig: 'Diese Wand ist fertig.',
+    aufhaengenKontrolle: 'Kontrolle: Vom letzten Element bis zur rechten Wandkante {rest} cm.',
+    aufhaengenLeer: 'Auf dieser Wandseite hängt nichts.',
+    aufhaengenHaekchenWeg: 'Häkchen dieser Wand zurücksetzen',
+    aufhaengenGruppe: 'Gruppe',
+
     // Anmeldung
     anmeldenTitel: 'Anmelden',
     anmeldenHilfe: 'Mit der E-Mail-Adresse und dem Passwort, die du bei der Einladung festgelegt hast.',

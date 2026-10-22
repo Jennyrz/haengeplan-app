@@ -138,7 +138,8 @@ function renderKopf() {
   $('#werkzeuge').innerHTML = `
     <label class="feld planwahl"><span>${esc(t('ausstellungWaehlen'))}</span><select id="planwahl">${optionen}</select></label>
     <div class="werkzeug-knoepfe">
-      ${knopf('ausstellungNeu', esc(t('ausstellungNeu')), { klasse: 'primaer' })}
+      ${knopf('aufhaengenStarten', esc(t('aufhaengenStarten')), { klasse: 'primaer' })}
+      ${knopf('ausstellungNeu', esc(t('ausstellungNeu')))}
       ${knopf('ausstellungDuplizieren', esc(t('ausstellungDuplizieren')))}
       ${knopf('ausstellungLoeschen', esc(t('ausstellungLoeschen')), { klasse: 'gefahr' })}
     </div>
@@ -679,6 +680,45 @@ const aktionen = {
     else await legePlanAn(D.neuerPlan());
     return false;
   },
+  aufhaengenStarten: () => {
+    aufhaengenAn(true);
+    return false;
+  },
+  aufhaengenBeenden: () => {
+    aktiveSeiteId = aufhaengen.seiteId ?? aktiveSeiteId;
+    aufhaengenAn(false);
+    return false;
+  },
+  aufhaengenWeiter: () => {
+    const { seite, schritte } = aufhaengenOrt();
+    const s = schritte[aufhaengen.schritt];
+    if (s) {
+      const menge = erledigtListe();
+      menge.add(`${seite.seiteId}:${s.elementId}`);
+      speichereErledigt(menge);
+    }
+    aufhaengen.schritt++;
+    renderAufhaengen();
+    window.scrollTo(0, 0);
+    return false;
+  },
+  aufhaengenVor: () => {
+    aufhaengen.schritt--;
+    renderAufhaengen();
+    return false;
+  },
+  aufhaengenSchritt: (id) => {
+    aufhaengen.schritt = Number(id);
+    renderAufhaengen();
+    return false;
+  },
+  aufhaengenReset: () => {
+    const praefix = `${aufhaengen.seiteId}:`;
+    speichereErledigt(new Set([...erledigtListe()].filter((k) => !k.startsWith(praefix))));
+    aufhaengen.schritt = 0;
+    renderAufhaengen();
+    return false;
+  },
   abmelden: async () => {
     await ausstehendesSpeichern();
     await S.abmelden();
@@ -730,6 +770,12 @@ document.addEventListener('input', (e) => {
 
 document.addEventListener('change', (e) => {
   const el = e.target;
+  if (aufhaengen && el.closest('#aufhaengen')) {
+    // Wand gewechselt oder nachgemessenen Wert fertig eingegeben: Karte neu zeichnen
+    if (el.dataset.aufhaengenWand) aufhaengen = { seiteId: el.value, schritt: null };
+    renderAufhaengen();
+    return;
+  }
   if (el.id === 'planwahl') {
     oeffnePlan(el.value);
   } else if (el.matches('select[data-ziel]')) {
@@ -782,6 +828,180 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => {
   if (speicherTimer) speichernJetzt();
+});
+
+// --- Aufhänge-Modus (vor Ort, fürs Handy) ---------------------------------
+// Ein Element nach dem anderen, pro Nagel ein Mass ab der vorherigen Kante plus Höhe.
+// Fehlende Masse (a, d, Halterung) können direkt hier eingetragen werden.
+// Häkchen „erledigt“ merkt sich nur dieses Gerät.
+
+let aufhaengen = null; // { seiteId, schritt } solange der Modus offen ist (schritt null = erstes offenes)
+let wachHalten = null;
+
+const ERLEDIGT = 'artboxy-haengeplan:erledigt:';
+
+// Warnung → Felder, die man vor Ort nachmessen kann
+const NACHMESSEN = {
+  aFehlt: [['werk', 'abstandOben']],
+  aNegativ: [['werk', 'abstandOben']],
+  aZuGross: [['werk', 'abstandOben']],
+  dFehlt: [['werk', 'aufhaengerAbstand']],
+  dZuGross: [['werk', 'aufhaengerAbstand']],
+  halterungFehlt: [['screen', 'halterungOffsetVertikal'], ['screen', 'halterungAbstandHorizontal']],
+};
+
+function erledigtListe() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(ERLEDIGT + planId)) || []);
+  } catch {
+    return new Set();
+  }
+}
+
+function speichereErledigt(menge) {
+  try {
+    localStorage.setItem(ERLEDIGT + planId, JSON.stringify([...menge]));
+  } catch {
+    // egal, nur Komfort
+  }
+}
+
+// Bildschirm bleibt an, solange der Modus offen ist (wo der Browser das kann)
+async function bildschirmWach(an) {
+  try {
+    if (an && !wachHalten && 'wakeLock' in navigator) wachHalten = await navigator.wakeLock.request('screen');
+    if (!an && wachHalten) {
+      await wachHalten.release();
+      wachHalten = null;
+    }
+  } catch {
+    wachHalten = null;
+  }
+}
+
+function aufhaengenOrt() {
+  const seiten = berechnePlan(plan).seiten;
+  if (!seiten.some((s) => s.seiteId === aufhaengen.seiteId)) aufhaengen.seiteId = seiten[0]?.seiteId;
+  const seite = seiten.find((s) => s.seiteId === aufhaengen.seiteId);
+  const anleitung = haengeSchritte(seite);
+  return { seiten, seite, anleitung, schritte: anleitung?.schritte ?? [] };
+}
+
+// „Gruppe: Spring, Summer, …“ bzw. „Titel · Künstler“
+function aufhaengenName(id) {
+  const g = D.findeGruppe(plan, id);
+  if (g) return `${t('aufhaengenGruppe')}: ${g.raster.flat().filter((w) => w && !D.findeWerk(plan, w)?.verborgen).map(name).join(', ')}`;
+  const w = D.findeWerk(plan, id);
+  return w?.kuenstler?.trim() ? `${name(id)} · ${w.kuenstler.trim()}` : name(id);
+}
+
+function renderAufhaengen() {
+  const { seiten, seite, anleitung, schritte } = aufhaengenOrt();
+  const erledigt = erledigtListe();
+  const schluessel = (seiteId, elementId) => `${seiteId}:${elementId}`;
+  if (aufhaengen.schritt === null) {
+    const offen = schritte.findIndex((s) => !erledigt.has(schluessel(seite.seiteId, s.elementId)));
+    aufhaengen.schritt = offen < 0 ? schritte.length : offen;
+  }
+  aufhaengen.schritt = Math.min(Math.max(0, aufhaengen.schritt), schritte.length);
+
+  const wandWahl = `<select data-aufhaengen-wand="1" aria-label="${esc(t('aufhaengenWand'))}">${seiten
+    .map((s) => {
+      const liste = haengeSchritte(s)?.schritte ?? [];
+      const fertig = liste.filter((x) => erledigt.has(schluessel(s.seiteId, x.elementId))).length;
+      return `<option value="${esc(s.seiteId)}"${s.seiteId === aufhaengen.seiteId ? ' selected' : ''}>${esc(name(s.seiteId))} (${fertig}/${liste.length})</option>`;
+    })
+    .join('')}</select>`;
+  const kopf = `<div class="af-kopf">${knopf('aufhaengenBeenden', esc(t('aufhaengenZurueck')), { klasse: 'klein' })}${wandWahl}</div>`;
+  if (!schritte.length) {
+    $('#aufhaengen').innerHTML = `${kopf}<p class="leer">${esc(t('aufhaengenLeer'))}</p>`;
+    return;
+  }
+
+  const fertig = aufhaengen.schritt >= schritte.length;
+  const s = schritte[Math.min(aufhaengen.schritt, schritte.length - 1)];
+  const e = einstellungen(plan);
+  const skizze = erzeugeVorschau(seite, {
+    mittelhoehe: e.mittelhoehe,
+    minBodenabstand: e.minBodenabstand,
+    name,
+    hervorheben: fertig ? null : s.elementId,
+    texte: { mittellinie: '', beschreibung: t('vorschauBeschreibung') },
+  });
+  const punkte = `<div class="af-punkte">${schritte
+    .map((x, i) => {
+      const klasse = `af-punkt${i === aufhaengen.schritt ? ' aktiv' : ''}${erledigt.has(schluessel(seite.seiteId, x.elementId)) ? ' erledigt' : ''}`;
+      return `<button type="button" class="${klasse}" data-aktion="aufhaengenSchritt" data-id="${i}" title="${esc(aufhaengenName(x.elementId))}">${i + 1}</button>`;
+    })
+    .join('')}</div>`;
+
+  let karte;
+  if (fertig) {
+    karte = `<div class="af-karte af-fertig"><p class="af-titel">✓ ${esc(t('aufhaengenFertig'))}</p>
+      <p>${esc(t('aufhaengenKontrolle', { rest: anleitung.rest }))}</p>
+      ${knopf('aufhaengenReset', esc(t('aufhaengenHaekchenWeg')), { klasse: 'klein' })}</div>`;
+  } else {
+    const bezug = s.vorherId ? t('aufhaengenAbKante', { name: name(s.vorherId) }) : t('aufhaengenAbWand');
+    const art = (code) => t(code).charAt(0).toUpperCase() + t(code).slice(1);
+
+    // Fehlende Masse direkt hier eintragen
+    const felder = [];
+    const gesehen = new Set();
+    for (const w of seite.warnungen.filter((x) => x.elementId === s.elementId && NACHMESSEN[x.code])) {
+      for (const [zielArt, feldName] of NACHMESSEN[w.code]) {
+        const id = w.werkId ?? w.elementId;
+        const ziel = `${zielArt}:${id}:${feldName}`;
+        if (gesehen.has(ziel)) continue;
+        gesehen.add(ziel);
+        const titel = s.typ === 'gruppe' || zielArt === 'screen' ? `${name(id)} – ${t(feldName)}` : t(feldName);
+        felder.push(feld(titel, ziel, zielObjekt(zielArt, id)?.[feldName]));
+      }
+    }
+    const fehlt = felder.length ? `<div class="af-fehlt"><p>${esc(t('aufhaengenFehlt'))}</p><div class="felder">${felder.join('')}</div></div>` : '';
+
+    const masse =
+      s.typ === 'pult'
+        ? `<div class="af-mass"><span class="af-art">${esc(t('aufhaengenPult'))}</span>
+            <span class="af-zahl">${formatCm(s.pultAb)} cm</span><span class="af-bezug">${esc(bezug)}</span></div>
+            <p class="hilfe">${esc(t('aufhaengenPultFrei'))}</p>`
+        : s.naegel
+            .map((n) => `<div class="af-mass">
+              <span class="af-art">${s.typ === 'gruppe' ? `${esc(name(n.werkId))} · ` : ''}${esc(art(n.art))} ${n.nr}</span>
+              <span class="af-zahl">${formatCm(n.ab)} cm</span><span class="af-bezug">${esc(bezug)}</span>
+              <span class="af-zahl">${formatCm(n.hoehe)} cm</span><span class="af-bezug">${esc(t('aufhaengenHoehe'))}</span></div>`)
+            .join('');
+    const istErledigt = erledigt.has(schluessel(seite.seiteId, s.elementId));
+    karte = `<div class="af-karte${istErledigt ? ' erledigt' : ''}">
+      <p class="af-schritt">${esc(t('aufhaengenFortschritt', { nr: String(aufhaengen.schritt + 1), anzahl: String(schritte.length) }))}${istErledigt ? ` · ✓ ${esc(t('aufhaengenErledigt'))}` : ''}</p>
+      <p class="af-titel">${esc(aufhaengenName(s.elementId))}</p>${fehlt}${masse}</div>`;
+  }
+  const letzter = aufhaengen.schritt === schritte.length - 1;
+  const nav = fertig
+    ? ''
+    : `<div class="af-nav">${knopf('aufhaengenVor', esc(t('aufhaengenVor')))}${knopf('aufhaengenWeiter', esc(t(letzter ? 'aufhaengenFertigKnopf' : 'aufhaengenWeiter')), { klasse: 'primaer' })}</div>`;
+  $('#aufhaengen').innerHTML = `${kopf}${punkte}<div class="af-skizze">${skizze}</div>${karte}${nav}`;
+}
+
+function aufhaengenAn(an) {
+  aufhaengen = an ? { seiteId: aktiveSeiteId, schritt: null } : null;
+  $('#aufhaengen').hidden = !an;
+  $('#app').hidden = an;
+  $('#sprungleiste').hidden = an;
+  $('.kopf').hidden = an;
+  bildschirmWach(an);
+  if (an) {
+    renderAufhaengen();
+    window.scrollTo(0, 0);
+  } else {
+    renderAlles();
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (aufhaengen && document.visibilityState === 'visible') {
+    wachHalten = null; // der Browser gibt die Sperre beim Wegwechseln frei
+    bildschirmWach(true);
+  }
 });
 
 // --- Anmeldung -------------------------------------------------------------

@@ -339,3 +339,29 @@ button.link { background: none; border: none; color: var(--akzent); padding: 0; 
 .karte.verborgen .hinweis-klein { margin: 4px 0 0; }
 .reihenfolge li.verborgen { opacity: 0.5; }
 .knoepfe-klein { display: inline-flex; gap: 6px; }
+
+/* Aufhänge-Modus (vor Ort, Handy) */
+.aufhaengen { max-width: 640px; margin: 0 auto; padding: 12px 16px 110px; }
+.af-kopf { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.af-kopf select { flex: 1; font-size: 16px; padding: 8px; }
+.af-punkte { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.af-punkt { min-width: 36px; height: 36px; padding: 0 6px; border-radius: 18px; font-weight: 600; }
+.af-punkt.erledigt { background: var(--ok-hg); border-color: var(--ok); color: var(--ok); }
+.af-punkt.aktiv { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+.af-skizze { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius); padding: 6px; margin-bottom: 12px; }
+.af-skizze svg { display: block; width: 100%; height: auto; max-height: 30vh; }
+.af-karte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius); padding: 14px; }
+.af-karte.erledigt { border-color: var(--ok); }
+.af-schritt { margin: 0; font-size: 13px; color: var(--text-leise); }
+.af-titel { margin: 2px 0 12px; font-size: 20px; font-weight: 700; line-height: 1.25; }
+.af-mass { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--linie); }
+.af-art { grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--text-leise); margin-bottom: 2px; }
+.af-zahl { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.af-bezug { font-size: 14px; color: var(--text-leise); }
+.af-fehlt { background: var(--warnung-hg); border: 1px solid var(--warnung-rand); border-radius: var(--radius); padding: 10px; margin-bottom: 10px; }
+.af-fehlt p { margin: 0 0 6px; font-weight: 600; color: var(--warnung); }
+.af-fehlt input { font-size: 18px; }
+.af-fertig .af-titel { color: var(--ok); }
+.af-nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--flaeche); border-top: 1px solid var(--linie); }
+.af-nav button { flex: 1; min-height: 54px; font-size: 17px; font-weight: 600; }
+.af-nav button.primaer { flex: 2; }

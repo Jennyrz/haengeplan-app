@@ -10,7 +10,8 @@ function esc(text) {
 const r1 = (n) => Math.round(n * 10) / 10;
 
 // seite: Ergebnis von berechneSeite; optionen: { mittelhoehe, minBodenabstand, name(id), texte: { mittellinie, beschreibung } }
-export function erzeugeVorschau(seite, { mittelhoehe, minBodenabstand, name = (id) => id, texte = {} }) {
+// hervorheben: elementId, das farbig markiert wird (Aufhänge-Modus)
+export function erzeugeVorschau(seite, { mittelhoehe, minBodenabstand, name = (id) => id, texte = {}, hervorheben = null }) {
   const L = seite.laenge > 0 ? seite.laenge : 100;
   const elemente = seite.elemente || [];
   const H = seite.hoehe > 0 ? seite.hoehe : Math.max(250, ...elemente.map((e) => e.oberkante + 20));
@@ -61,16 +62,19 @@ export function erzeugeVorschau(seite, { mittelhoehe, minBodenabstand, name = (i
         <text x="${r1(t0.x + t0.breite / 2)}" y="${r1(y(t0.hoehe / 2) + schrift / 3)}" font-size="${r1(schrift * 0.8)}" text-anchor="middle" fill="#3b2614">${esc(name(t0.werkId))}</text></g>`);
       continue;
     }
+    const aktiv = el.elementId === hervorheben;
     for (const teil of el.teile) {
       const istScreen = teil.typ === 'screen';
       const titel = name(teil.werkId);
+      const fuellung = aktiv ? '#cfe0ff' : istScreen ? '#0f766e' : '#ffffff';
+      const rand = aktiv ? '#1d4ed8' : istScreen ? '#0b4f4a' : '#333';
       teile.push(`<g><title>${esc(titel)}</title>
         <rect x="${r1(teil.x)}" y="${y(teil.oberkante)}" width="${r1(teil.breite)}" height="${r1(teil.hoehe)}"
-          fill="${istScreen ? '#0f766e' : '#ffffff'}" stroke="${istScreen ? '#0b4f4a' : '#333'}" stroke-width="${r1(schrift / 7)}"/>`);
+          fill="${fuellung}" stroke="${rand}" stroke-width="${r1(schrift / (aktiv ? 3 : 7))}"/>`);
       // Titel: so gross wie möglich, aber in die Breite passend
       const fs = r1(Math.min(schrift * 0.8, (teil.breite * 0.9) / Math.max(1, titel.length * 0.55)));
       teile.push(`<text x="${r1(teil.x + teil.breite / 2)}" y="${r1(y(teil.oberkante - teil.hoehe / 2) + fs / 3)}" font-size="${fs}"
-          text-anchor="middle" fill="${istScreen ? '#ffffff' : '#333'}">${esc(titel)}</text></g>`);
+          text-anchor="middle" fill="${istScreen && !aktiv ? '#ffffff' : '#333'}">${esc(titel)}</text></g>`);
     }
     for (const p of el.punkte) {
       teile.push(`<circle cx="${r1(p.x)}" cy="${y(p.hoehe)}" r="${r1(schrift * 0.35)}" fill="#d4202a" stroke="#fff" stroke-width="${r1(schrift / 12)}">
