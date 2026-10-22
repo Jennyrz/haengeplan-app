@@ -6,7 +6,37 @@ import { erzeugeVorschau } from './vorschau.js';
 import { t } from './texte.js';
 import * as D from './daten.js';
 
-let plan = D.neuerPlan();
+const SPEICHER_SCHLUESSEL = 'artboxy-haengeplan';
+
+let plan = ladePlan();
+
+// --- Speichern im Browser --------------------------------------------------
+
+function ladePlan() {
+  try {
+    const text = localStorage.getItem(SPEICHER_SCHLUESSEL);
+    if (text) return D.leseImport(text);
+  } catch {
+    // Kein Zugriff oder beschädigter Inhalt: mit leerem Plan beginnen
+  }
+  return D.neuerPlan();
+}
+
+function speichern() {
+  try {
+    localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify(plan));
+    zeigeStatus(t('gespeichert'));
+  } catch {
+    zeigeStatus(t('speichernFehlgeschlagen'), true);
+  }
+}
+
+function zeigeStatus(text, problem = false) {
+  const el = $('#status');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('problem', problem);
+}
 
 // --- Hilfsfunktionen -------------------------------------------------------
 
@@ -318,8 +348,6 @@ function renderAlles() {
 
 // --- Änderungen ------------------------------------------------------------
 
-function speichern() {}
-
 // struktur = Formulare neu zeichnen (z. B. neues Werk); sonst nur Ergebnisse und Namen aktualisieren
 function geaendert({ struktur = false } = {}) {
   speichern();
@@ -417,6 +445,65 @@ document.addEventListener('keydown', (e) => {
   fuehreAus(e.key === 'ArrowUp' ? 'hoch' : 'runter', zeile.dataset.element);
 });
 
+// --- Export, Import, neuer Plan -------------------------------------------
+
+function renderWerkzeuge() {
+  $('#werkzeuge').innerHTML = `
+    ${knopf('exportieren', esc(t('exportieren')), { klasse: 'primaer' })}
+    <label class="knopf-datei"><input type="file" id="import-datei" accept=".json,application/json">${esc(t('importieren'))}</label>
+    ${knopf('neuerPlan', esc(t('neuerPlan')))}
+    <span class="status" id="status" role="status"></span>`;
+}
+
+function dateiname() {
+  const basis = (plan.ausstellung.name || 'haengeplan')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  const datum = new Date().toISOString().slice(0, 10);
+  return `${basis || 'haengeplan'}-${datum}.json`;
+}
+
+function exportieren() {
+  const text = JSON.stringify(D.erstelleExport(plan), null, 2);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = dateiname();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return false;
+}
+
+async function importieren(datei) {
+  try {
+    plan = D.leseImport(await datei.text());
+    speichern();
+    renderAlles();
+    zeigeStatus(t('importOk'));
+  } catch (fehler) {
+    const grund = fehler instanceof D.ImportFehler ? t(fehler.code, fehler.werte) : t('importKeinJson');
+    alert(t('importFehler', { grund }));
+  }
+}
+
+aktionen.exportieren = exportieren;
+aktionen.neuerPlan = () => {
+  if (!confirm(t('neuerPlanFrage'))) return false;
+  plan = D.neuerPlan();
+};
+
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'import-datei' && e.target.files[0]) {
+    importieren(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
 // --- Start -----------------------------------------------------------------
 
 function start() {
@@ -424,6 +511,7 @@ function start() {
   document.querySelectorAll('[data-text]').forEach((el) => {
     el.textContent = t(el.dataset.text);
   });
+  renderWerkzeuge();
   renderAlles();
 }
 

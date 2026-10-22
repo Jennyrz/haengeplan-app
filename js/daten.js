@@ -2,7 +2,7 @@
 // Reine Funktionen ohne Zugriff auf die Oberfläche. Das Format entspricht CLAUDE.md, Abschnitt 7.
 // Stufe 1 arbeitet nur mit der ersten Wand und deren erster Seite.
 
-import { STANDARD } from './calc.js';
+import { STANDARD, berechnePlan } from './calc.js';
 
 export const FORMAT_VERSION = 1;
 
@@ -182,4 +182,81 @@ export function setzeRasterZelle(plan, gruppeId, zeile, spalte, werkId) {
     setzeAufWand(plan, werkId, false);
   }
   g.raster[zeile][spalte] = werkId || null;
+}
+
+// --- Export und Import -----------------------------------------------------
+
+// Export: der Plan plus die berechneten Befestigungspunkte (für ESP32-Gerät und iPhone-App).
+export function erstelleExport(plan) {
+  const kopie = JSON.parse(JSON.stringify(plan));
+  return { ...kopie, befestigungspunkte: berechnePlan(kopie).befestigungspunkte };
+}
+
+// Fehler beim Import; code verweist auf einen Text in texte.js.
+export class ImportFehler extends Error {
+  constructor(code, werte = {}) {
+    super(code);
+    this.code = code;
+    this.werte = werte;
+  }
+}
+
+// Liest einen JSON-Text ein und liefert einen vollständigen Plan. Wirft ImportFehler, wenn das nicht geht.
+export function leseImport(text) {
+  let roh;
+  try {
+    roh = JSON.parse(text);
+  } catch {
+    throw new ImportFehler('importKeinJson');
+  }
+  return normalisierePlan(roh);
+}
+
+// Prüft einen eingelesenen Plan und ergänzt fehlende Felder mit Standardwerten.
+// Unbekannte Felder bleiben erhalten; befestigungspunkte werden verworfen (sie werden neu berechnet).
+export function normalisierePlan(roh) {
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) throw new ImportFehler('importKeinJson');
+  if (roh.formatVersion !== FORMAT_VERSION) {
+    throw new ImportFehler('importFalscheVersion', { version: String(roh.formatVersion ?? '–') });
+  }
+  const leer = neuerPlan();
+  const { befestigungspunkte, ...plan } = JSON.parse(JSON.stringify(roh));
+
+  const istListe = (x) => Array.isArray(x);
+  if (!istListe(plan.waende) || plan.waende.length === 0 || !istListe(plan.werke)) {
+    throw new ImportFehler('importUnvollstaendig');
+  }
+  for (const wand of plan.waende) {
+    if (!istListe(wand.seiten) || wand.seiten.length === 0) throw new ImportFehler('importUnvollstaendig');
+    for (const seite of wand.seiten) {
+      if (!istListe(seite.elemente)) seite.elemente = [];
+    }
+  }
+
+  plan.ausstellung = { ...leer.ausstellung, ...(plan.ausstellung || {}) };
+  plan.werke = plan.werke.map((w) => ({
+    titel: '',
+    kuenstler: '',
+    anzahlNaegel: 1,
+    abstandOben: null,
+    aufhaengerAbstand: null,
+    quelleMasse: 'gemessen',
+    ...w,
+  }));
+  plan.gruppen = (istListe(plan.gruppen) ? plan.gruppen : []).map((g) => {
+    const zeilen = Number.isInteger(g.zeilen) && g.zeilen > 0 ? g.zeilen : 1;
+    const spalten = Number.isInteger(g.spalten) && g.spalten > 0 ? g.spalten : 1;
+    const raster = Array.from({ length: zeilen }, (_, r) =>
+      Array.from({ length: spalten }, (_, c) => g.raster?.[r]?.[c] ?? null),
+    );
+    return { innenabstand: STANDARD.innenabstand, ...g, zeilen, spalten, raster };
+  });
+
+  // Die beiden ARTBOXY-Screens sind immer vorhanden.
+  plan.screens = istListe(plan.screens) ? plan.screens : [];
+  for (const vorlage of leer.screens) {
+    if (!plan.screens.some((s) => s.id === vorlage.id)) plan.screens.push(vorlage);
+  }
+
+  return plan;
 }
