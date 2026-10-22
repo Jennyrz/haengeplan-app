@@ -1,31 +1,33 @@
-// Datenmodell der Hängeplan-App: neuer Plan, Werke/Gruppen anlegen, Reihenfolge ändern.
+// Datenmodell der Hängeplan-App: neuer Plan, Wände und Seiten, Werke/Gruppen anlegen, Platzierung und Reihenfolge.
 // Reine Funktionen ohne Zugriff auf die Oberfläche. Das Format entspricht CLAUDE.md, Abschnitt 7.
-// Stufe 1 arbeitet nur mit der ersten Wand und deren erster Seite.
+// Jedes Element (Werk, Gruppe, Screen) steht auf höchstens einer Wandseite.
 
-import { STANDARD, berechnePlan } from './calc.js';
+import { STANDARD } from './calc.js';
 
 export const FORMAT_VERSION = 1;
 
 export const SCREEN_VORLAGE = { breite: 123.8, hoehe: 70.9, gewicht: 17 };
 
-export function neuerPlan() {
+export const WAND_VORLAGE = { laenge: 400, hoehe: 250 };
+
+function neueSeite(wandId, buchstabe, bezeichnung) {
+  return { id: `${wandId}-${buchstabe}`, bezeichnung, bespielbar: true, elemente: [] };
+}
+
+function neueWand(id, name) {
+  return { id, name, laenge: WAND_VORLAGE.laenge, hoehe: WAND_VORLAGE.hoehe, seiten: [neueSeite(id, 'a', 'innen')] };
+}
+
+export function neuerPlan(name = '') {
   return {
     formatVersion: FORMAT_VERSION,
     ausstellung: {
-      name: '',
+      name,
       mittelhoehe: STANDARD.mittelhoehe,
       mindestabstand: STANDARD.mindestabstand,
       minBodenabstand: STANDARD.minBodenabstand,
     },
-    waende: [
-      {
-        id: 'w1',
-        name: 'Wand 1',
-        laenge: 400,
-        hoehe: 250,
-        seiten: [{ id: 'w1-a', bezeichnung: 'innen', bespielbar: true, elemente: [] }],
-      },
-    ],
+    waende: [neueWand('w1', 'Wand 1')],
     werke: [],
     gruppen: [],
     screens: [
@@ -53,12 +55,22 @@ export function neuerPlan() {
 
 // --- Zugriff ---------------------------------------------------------------
 
-export function aktuelleWand(plan) {
-  return plan.waende[0];
+export function findeWand(plan, wandId) {
+  return plan.waende.find((w) => w.id === wandId);
 }
 
-export function aktuelleSeite(plan) {
-  return plan.waende[0].seiten[0];
+// Liefert { wand, seite } zu einer Seiten-id (oder undefined).
+export function findeSeite(plan, seiteId) {
+  for (const wand of plan.waende) {
+    const seite = wand.seiten.find((s) => s.id === seiteId);
+    if (seite) return { wand, seite };
+  }
+  return undefined;
+}
+
+// Alle Seiten aller Wände in Reihenfolge: [{ wand, seite }, …]
+export function alleSeiten(plan) {
+  return plan.waende.flatMap((wand) => wand.seiten.map((seite) => ({ wand, seite })));
 }
 
 export function findeWerk(plan, id) {
@@ -78,39 +90,97 @@ export function gruppeVonWerk(plan, werkId) {
   return plan.gruppen.find((g) => g.raster.some((zeile) => zeile.includes(werkId)));
 }
 
-export function istAufWand(plan, id) {
-  return aktuelleSeite(plan).elemente.includes(id);
+// Wandseite, auf der ein Element steht: { wand, seite } oder undefined
+export function platzierungVon(plan, id) {
+  return alleSeiten(plan).find(({ seite }) => seite.elemente.includes(id));
+}
+
+// Elemente, die auf keiner Seite stehen und auch nicht in einer Gruppe stecken
+export function nichtPlatziert(plan) {
+  const ids = [
+    ...plan.werke.filter((w) => !gruppeVonWerk(plan, w.id)).map((w) => w.id),
+    ...plan.gruppen.map((g) => g.id),
+    ...plan.screens.map((s) => s.id),
+  ];
+  return ids.filter((id) => !platzierungVon(plan, id));
 }
 
 // Nächste freie id mit Präfix, z. B. e1, e2, … oder g1, g2, …
 export function naechsteId(plan, praefix) {
-  const belegt = new Set([...plan.werke, ...plan.gruppen, ...plan.screens].map((x) => x.id));
+  const belegt = new Set([...plan.werke, ...plan.gruppen, ...plan.screens, ...plan.waende].map((x) => x.id));
   let n = 1;
   while (belegt.has(`${praefix}${n}`)) n++;
   return `${praefix}${n}`;
 }
 
-// --- Wand: Platzierung und Reihenfolge -------------------------------------
+// --- Platzierung und Reihenfolge -------------------------------------------
 
-export function setzeAufWand(plan, id, aufWand) {
-  const seite = aktuelleSeite(plan);
-  const drauf = seite.elemente.includes(id);
-  if (aufWand && !drauf) seite.elemente.push(id);
-  if (!aufWand && drauf) seite.elemente = seite.elemente.filter((x) => x !== id);
+// Stellt ein Element auf die Seite seiteId (hinten angehängt) oder nimmt es von jeder Wand (seiteId = null).
+export function platziere(plan, id, seiteId) {
+  const bisher = platzierungVon(plan, id);
+  if (bisher && bisher.seite.id === seiteId) return;
+  for (const { seite } of alleSeiten(plan)) {
+    seite.elemente = seite.elemente.filter((x) => x !== id);
+  }
+  const ziel = seiteId ? findeSeite(plan, seiteId) : undefined;
+  if (ziel) ziel.seite.elemente.push(id);
 }
 
-// Verschiebt ein Element in der Reihenfolge um eine Position (-1 = nach links/oben, +1 = nach rechts/unten).
+// Verschiebt ein Element auf seiner Seite um eine Position (-1 = weiter links, +1 = weiter rechts).
 export function verschiebe(plan, id, richtung) {
-  const liste = aktuelleSeite(plan).elemente;
+  const ort = platzierungVon(plan, id);
+  if (!ort) return;
+  const liste = ort.seite.elemente;
   const i = liste.indexOf(id);
   const j = i + richtung;
-  if (i < 0 || j < 0 || j >= liste.length) return;
+  if (j < 0 || j >= liste.length) return;
   [liste[i], liste[j]] = [liste[j], liste[i]];
+}
+
+// --- Wände und Seiten ------------------------------------------------------
+
+export function wandHinzufuegen(plan) {
+  const id = naechsteId(plan, 'w');
+  const wand = neueWand(id, `Wand ${plan.waende.length + 1}`);
+  plan.waende.push(wand);
+  return wand;
+}
+
+// Löscht eine Wand. Ihre Elemente bleiben erhalten, sind danach aber nicht platziert.
+// Die letzte Wand kann nicht gelöscht werden.
+export function wandLoeschen(plan, wandId) {
+  if (plan.waende.length <= 1) return false;
+  plan.waende = plan.waende.filter((w) => w.id !== wandId);
+  return true;
+}
+
+export function seiteHinzufuegen(plan, wandId) {
+  const wand = findeWand(plan, wandId);
+  if (!wand) return undefined;
+  const belegt = new Set(wand.seiten.map((s) => s.id));
+  let n = 0;
+  let buchstabe;
+  do {
+    buchstabe = String.fromCharCode(97 + n++);
+  } while (belegt.has(`${wandId}-${buchstabe}`));
+  const bezeichnung = wand.seiten.some((s) => s.bezeichnung === 'aussen') ? `Seite ${wand.seiten.length + 1}` : 'aussen';
+  const seite = neueSeite(wandId, buchstabe, bezeichnung);
+  wand.seiten.push(seite);
+  return seite;
+}
+
+// Löscht eine Seite. Ihre Elemente sind danach nicht platziert. Die letzte Seite einer Wand bleibt.
+export function seiteLoeschen(plan, seiteId) {
+  const ort = findeSeite(plan, seiteId);
+  if (!ort || ort.wand.seiten.length <= 1) return false;
+  ort.wand.seiten = ort.wand.seiten.filter((s) => s.id !== seiteId);
+  return true;
 }
 
 // --- Werke -----------------------------------------------------------------
 
-export function werkHinzufuegen(plan) {
+// Legt ein Werk an und stellt es (falls angegeben) auf die Seite seiteId.
+export function werkHinzufuegen(plan, seiteId = null) {
   const werk = {
     id: naechsteId(plan, 'e'),
     titel: '',
@@ -123,13 +193,13 @@ export function werkHinzufuegen(plan) {
     quelleMasse: 'gemessen',
   };
   plan.werke.push(werk);
-  setzeAufWand(plan, werk.id, true);
+  platziere(plan, werk.id, seiteId);
   return werk;
 }
 
 export function werkLoeschen(plan, id) {
   plan.werke = plan.werke.filter((w) => w.id !== id);
-  setzeAufWand(plan, id, false);
+  platziere(plan, id, null);
   for (const g of plan.gruppen) {
     g.raster = g.raster.map((zeile) => zeile.map((x) => (x === id ? null : x)));
   }
@@ -137,7 +207,7 @@ export function werkLoeschen(plan, id) {
 
 // --- Gruppen ---------------------------------------------------------------
 
-export function gruppeHinzufuegen(plan) {
+export function gruppeHinzufuegen(plan, seiteId = null) {
   const gruppe = {
     id: naechsteId(plan, 'g'),
     zeilen: 2,
@@ -149,14 +219,14 @@ export function gruppeHinzufuegen(plan) {
     ],
   };
   plan.gruppen.push(gruppe);
-  setzeAufWand(plan, gruppe.id, true);
+  platziere(plan, gruppe.id, seiteId);
   return gruppe;
 }
 
 // Löscht die Gruppe; ihre Werke bleiben erhalten, sind danach aber nicht platziert.
 export function gruppeLoeschen(plan, id) {
   plan.gruppen = plan.gruppen.filter((g) => g.id !== id);
-  setzeAufWand(plan, id, false);
+  platziere(plan, id, null);
 }
 
 // Ändert Zeilen/Spalten. Bestehende Zuordnungen bleiben erhalten, soweit sie ins neue Raster passen.
@@ -179,62 +249,37 @@ export function setzeRasterZelle(plan, gruppeId, zeile, spalte, werkId) {
     for (const andere of plan.gruppen) {
       andere.raster = andere.raster.map((z) => z.map((x) => (x === werkId ? null : x)));
     }
-    setzeAufWand(plan, werkId, false);
+    platziere(plan, werkId, null);
   }
   g.raster[zeile][spalte] = werkId || null;
 }
 
-// --- Export und Import -----------------------------------------------------
+// --- Plan kopieren und prüfen ----------------------------------------------
 
-// Export: der Plan plus die berechneten Befestigungspunkte (für ESP32-Gerät und iPhone-App).
-export function erstelleExport(plan) {
-  const kopie = JSON.parse(JSON.stringify(plan));
-  return { ...kopie, befestigungspunkte: berechnePlan(kopie).befestigungspunkte };
+export function kopiere(plan) {
+  return JSON.parse(JSON.stringify(plan));
 }
 
-// Fehler beim Import; code verweist auf einen Text in texte.js.
-export class ImportFehler extends Error {
-  constructor(code, werte = {}) {
-    super(code);
-    this.code = code;
-    this.werte = werte;
-  }
-}
-
-// Liest einen JSON-Text ein und liefert einen vollständigen Plan. Wirft ImportFehler, wenn das nicht geht.
-export function leseImport(text) {
-  let roh;
-  try {
-    roh = JSON.parse(text);
-  } catch {
-    throw new ImportFehler('importKeinJson');
-  }
-  return normalisierePlan(roh);
-}
-
-// Prüft einen eingelesenen Plan und ergänzt fehlende Felder mit Standardwerten.
-// Unbekannte Felder bleiben erhalten; befestigungspunkte werden verworfen (sie werden neu berechnet).
+// Prüft einen gespeicherten Plan und ergänzt fehlende Felder mit Standardwerten.
+// Unbekannte Felder bleiben erhalten. Wirft einen Fehler, wenn der Plan unbrauchbar ist.
 export function normalisierePlan(roh) {
-  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) throw new ImportFehler('importKeinJson');
-  if (roh.formatVersion !== FORMAT_VERSION) {
-    throw new ImportFehler('importFalscheVersion', { version: String(roh.formatVersion ?? '–') });
-  }
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) throw new Error('planUngueltig');
+  if (roh.formatVersion !== FORMAT_VERSION) throw new Error('planUngueltig');
   const leer = neuerPlan();
-  const { befestigungspunkte, ...plan } = JSON.parse(JSON.stringify(roh));
+  const { befestigungspunkte, ...plan } = kopiere(roh);
 
   const istListe = (x) => Array.isArray(x);
-  if (!istListe(plan.waende) || plan.waende.length === 0 || !istListe(plan.werke)) {
-    throw new ImportFehler('importUnvollstaendig');
-  }
+  plan.waende = istListe(plan.waende) && plan.waende.length ? plan.waende : leer.waende;
   for (const wand of plan.waende) {
-    if (!istListe(wand.seiten) || wand.seiten.length === 0) throw new ImportFehler('importUnvollstaendig');
+    if (!istListe(wand.seiten) || wand.seiten.length === 0) wand.seiten = [neueSeite(wand.id, 'a', 'innen')];
     for (const seite of wand.seiten) {
       if (!istListe(seite.elemente)) seite.elemente = [];
+      if (seite.bespielbar === undefined) seite.bespielbar = true;
     }
   }
 
   plan.ausstellung = { ...leer.ausstellung, ...(plan.ausstellung || {}) };
-  plan.werke = plan.werke.map((w) => ({
+  plan.werke = (istListe(plan.werke) ? plan.werke : []).map((w) => ({
     titel: '',
     kuenstler: '',
     anzahlNaegel: 1,

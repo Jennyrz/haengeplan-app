@@ -30,7 +30,7 @@ Beenden: im Terminal `Ctrl + C`.
 
 Unten auf dem Handy gibt es eine Leiste, um direkt zu **Eingaben**, **Vorschau** oder **Nägel** (Liste der Befestigungspunkte) zu springen.
 
-**Wichtig:** Jeder Browser speichert seinen eigenen Plan. Laptop und Handy sehen also nicht automatisch denselben Stand. Plan auf dem Laptop **exportieren**, Datei aufs Handy bringen (z. B. über Dropbox oder AirDrop) und dort **importieren**.
+**Wichtig (bis der Online-Speicher eingerichtet ist):** Jeder Browser speichert seine eigenen Ausstellungen. Laptop und Handy sehen also noch nicht denselben Stand.
 
 ## 2. Tests ausführen
 
@@ -41,34 +41,35 @@ npm test
 
 Am Ende muss `fail 0` stehen. Die Tests prüfen alle Testfälle aus `CLAUDE.md` (Einzelwerke, Verteilung, Gruppe, Screen, Rundung, Warnungen) sowie Export und Import.
 
-## 3. Eine Wand planen
+## 3. Eine Ausstellung planen
 
-1. **Ausstellung:** Name eingeben. Mittelhöhe (Standard 150 cm), Mindestabstand (10 cm) und Mindestabstand zum Boden (30 cm) bei Bedarf anpassen.
-2. **Wand:** Wandlänge L und Wandhöhe eingeben.
-3. **Werke:** Für jedes Werk „+ Werk hinzufügen“ und ausfüllen:
+1. **Ausstellung wählen oder anlegen:** Oben bei „Ausstellung“ zwischen deinen Ausstellungen wechseln. „+ Neue Ausstellung“ legt eine leere an, „Duplizieren“ kopiert die aktuelle (praktisch, wenn eine Messe ähnlich wie letztes Jahr wird).
+2. **Ausstellung:** Name, Mittelhöhe (Standard 150 cm), Mindestabstand (10 cm) und Mindestabstand zum Boden (30 cm).
+3. **Wände:** Jede Wand ist ein Reiter. „+ Wand“ legt eine neue an. Für die gewählte Wand Bezeichnung, Wandlänge L und Wandhöhe eingeben.
+4. **Seiten:** Eine Wand hat zuerst eine Seite („innen“). Mit „+ Seite“ kommt z. B. „aussen“ dazu – jede Seite hat ihre eigene Hängung. Nicht nutzbare Seiten: Häkchen „bespielbar“ wegnehmen.
+5. **Werke:** „+ Werk hinzufügen“ legt ein Werk auf der gerade gewählten Wandseite an. Ausfüllen:
    - Breite B und Höhe H
    - **a** = Abstand von der Oberkante des Werks bis zum **gespannten** Draht bzw. zur Öse
    - Aufhängung: 1 Nagel oder 2 Nägel. Bei 2 Nägeln zusätzlich **d** = Abstand zwischen den beiden Aufhängern
    - Masse „gemessen“ oder „vom Künstler (unsicher)“
+   - **Hängt an:** auf welcher Wand/Seite das Werk hängt (oder „nicht platziert“)
    - Kommazahlen mit Komma oder Punkt, z. B. `70,9`
-4. **Gruppen** (z. B. 2×2): „+ Gruppe hinzufügen“, Zeilen und Spalten wählen, dann in den Feldern die Werke **zeilenweise** zuordnen (oben links beginnen). Ein Werk in einer Gruppe hängt nicht mehr zusätzlich einzeln an der Wand.
-5. **Screens:** Bei „Screen quer“ oder „Screen hoch“ das Häkchen **auf der Wand** setzen. Halterungsmasse eintragen:
+   - Mit „Anzeigen“ blendest du nur die Werke der gewählten Wandseite oder nur die noch nicht platzierten ein.
+6. **Gruppen** (z. B. 2×2): „+ Gruppe hinzufügen“, Zeilen und Spalten wählen, dann die Werke **zeilenweise** zuordnen (oben links beginnen). Ein Werk in einer Gruppe hängt nicht zusätzlich einzeln an der Wand.
+7. **Screens:** Bei „Screen quer“ bzw. „Screen hoch“ unter „Hängt an“ die Wandseite wählen. Halterungsmasse eintragen:
    - **v** = wie weit die Schraubpunkte über (+) oder unter (–) der Screenmitte liegen
    - **s** = Abstand zwischen den beiden Schraubpunkten
-6. **Reihenfolge:** In „Reihenfolge auf der Wand“ mit ↑ ↓ sortieren (oben = ganz links an der Wand). Mit × wird ein Element von der Wand genommen, aber nicht gelöscht.
-7. **Ergebnis ablesen:**
+8. **Reihenfolge:** Zeigt die gewählte Wandseite. Mit ↑ ↓ sortieren (oben = ganz links an der Wand), mit × von der Wand nehmen. Über „Element auf diese Wandseite holen …“ holst du nicht platzierte Werke, Gruppen oder Screens dazu.
+9. **Ergebnis ablesen** (immer für die gewählte Wandseite):
    - **Wandvorschau:** massstabsgetreu, blaue gestrichelte Linie = Mittelhöhe, rote Punkte = Nägel/Schrauben
-   - **Hinweise:** gelb = Warnung (Berechnung läuft trotzdem), rot = Fehler (Element wird nicht berechnet)
+   - **Hinweise:** gelb = Warnung (Berechnung läuft trotzdem), rot = Fehler (Element wird nicht berechnet). Die Zahl am Wand-Reiter zeigt, wie viele Hinweise es auf dieser Wand gibt.
    - **Befestigungspunkte:** pro Nagel/Schraube x ab linker Wandkante und Höhe ab Boden, auf 0,5 cm gerundet
 
 ## 4. Speichern
 
-- Alles wird **automatisch im Browser** gespeichert (oben rechts steht „Automatisch im Browser gespeichert“).
-- **JSON exportieren** lädt den Plan als Datei herunter, inklusive aller berechneten Befestigungspunkte. Diese Datei ist auch das Format für das spätere Markiergerät bzw. die iPhone-App.
-- **JSON importieren** lädt eine exportierte Datei wieder.
-- **Neuer Plan** verwirft den aktuellen Stand (vorher exportieren!).
+Alles wird **automatisch gespeichert**, kurz nach jeder Änderung (oben steht „Gespeichert“). Es gibt keinen Speichern-Knopf.
 
-Tipp: Nach jeder Planung exportieren und die Datei in Dropbox ablegen. Der Browser-Speicher kann verloren gehen, z. B. wenn der Verlauf gelöscht wird.
+Im Moment liegt alles im Browser des jeweiligen Geräts. Sobald der Online-Speicher eingerichtet ist, sehen alle Geräte und das ganze Team denselben Stand.
 
 ## 5. Ordnerstruktur
 
@@ -77,7 +78,8 @@ Tipp: Nach jeder Planung exportieren und die Datei in Dropbox ablegen. Der Brows
 | `index.html` | die Seite |
 | `css/style.css` | Aussehen (inkl. Handy-Ansicht) |
 | `js/calc.js` | **die ganze Berechnung** (Formeln aus `CLAUDE.md`) |
-| `js/daten.js` | Datenformat, Werke/Gruppen anlegen, Export/Import |
+| `js/daten.js` | Datenmodell: Wände, Seiten, Werke, Gruppen |
+| `js/speicher.js` | wo die Ausstellungen gespeichert werden |
 | `js/vorschau.js` | Wandvorschau (SVG) |
 | `js/texte.js` | alle Texte der Oberfläche (für weitere Sprachen) |
 | `js/app.js` | verbindet Oberfläche und Berechnung |

@@ -1,5 +1,17 @@
 # Hängeplan-App – Projektbriefing für Claude Code
 
+## 0. Stand und Änderungen (22.10.2026)
+
+Stufe 1 (Abschnitte 3–9) ist gebaut. Danach hat Jenny entschieden:
+- **Mehrere Wände mit mehreren Seiten** (innen/aussen) – gebaut.
+- **Mehrere Ausstellungen** in der App (anlegen, wechseln, duplizieren, löschen) – gebaut.
+- **Kein JSON-Export/-Import in der Oberfläche**, keine Hardware-Anbindung. Das Datenformat (Abschnitt 7) bleibt trotzdem das interne Format.
+- **Online-Speicher mit Login**, damit alle Geräte und das Team denselben Stand sehen (geplant: Supabase). Austausch nur in `js/speicher.js`.
+- **Online erreichbar unter fester Adresse** (geplant: GitHub Pages).
+- **Handytauglich**, weil die App an Messen genutzt wird.
+
+Die Einschränkungen in Abschnitt 3 („NICHT bauen: Login, Server, Datenbank, mehrere Wände“) gelten dafür nicht mehr.
+
 ## 1. Wer ich bin und wie wir arbeiten
 
 Ich bin Jenny, CMO bei ARTBOXY. Ich habe keinen Programmierhintergrund, kenne mich aber mit Terminal, Xcode und Claude Code aus.
