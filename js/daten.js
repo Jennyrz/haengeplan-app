@@ -9,6 +9,9 @@ export const FORMAT_VERSION = 1;
 
 export const SCREEN_VORLAGE = { breite: 123.8, hoehe: 70.9, gewicht: 17 };
 
+// Pult: Länge × Tiefe × Höhe in cm, freiraum = Abstand links und rechts, in dem kein Werk hängt
+export const PULT_VORLAGE = { id: 'p-pult', breite: 100, tiefe: 60, hoehe: 100, freiraum: 50 };
+
 export const WAND_VORLAGE = { laenge: 400, hoehe: 250 };
 
 function neueSeite(wandId, buchstabe, bezeichnung) {
@@ -52,6 +55,7 @@ export function neuerPlan(name = '') {
         halterungAbstandHorizontal: 0,
       },
     ],
+    pulte: [{ ...PULT_VORLAGE }],
   };
 }
 
@@ -87,6 +91,10 @@ export function findeScreen(plan, id) {
   return plan.screens.find((s) => s.id === id);
 }
 
+export function findePult(plan, id) {
+  return (plan.pulte || []).find((p) => p.id === id);
+}
+
 // Gruppe, in deren Raster das Werk steht (oder undefined).
 export function gruppeVonWerk(plan, werkId) {
   return plan.gruppen.find((g) => g.raster.some((zeile) => zeile.includes(werkId)));
@@ -103,13 +111,14 @@ export function nichtPlatziert(plan) {
     ...plan.werke.filter((w) => !gruppeVonWerk(plan, w.id)).map((w) => w.id),
     ...plan.gruppen.map((g) => g.id),
     ...plan.screens.map((s) => s.id),
+    ...(plan.pulte || []).map((p) => p.id),
   ];
   return ids.filter((id) => !platzierungVon(plan, id));
 }
 
 // Nächste freie id mit Präfix, z. B. e1, e2, … oder g1, g2, …
 export function naechsteId(plan, praefix) {
-  const belegt = new Set([...plan.werke, ...plan.gruppen, ...plan.screens, ...plan.waende].map((x) => x.id));
+  const belegt = new Set([...plan.werke, ...plan.gruppen, ...plan.screens, ...(plan.pulte || []), ...plan.waende].map((x) => x.id));
   let n = 1;
   while (belegt.has(`${praefix}${n}`)) n++;
   return `${praefix}${n}`;
@@ -311,6 +320,9 @@ export function normalisierePlan(roh) {
   for (const vorlage of leer.screens) {
     if (!plan.screens.some((s) => s.id === vorlage.id)) plan.screens.push(vorlage);
   }
+
+  // Das Pult ist ebenfalls immer vorhanden (ältere Pläne bekommen es dazu).
+  plan.pulte = istListe(plan.pulte) && plan.pulte.length ? plan.pulte : [{ ...PULT_VORLAGE }];
 
   return plan;
 }

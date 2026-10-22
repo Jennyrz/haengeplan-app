@@ -23,13 +23,15 @@ export const TEXTE = {
     reihenfolgeHilfe: 'Von links nach rechts, so wie man vor der Wand steht. Verschieben mit ↑ ↓ (Knöpfe oder Pfeiltasten).',
     abschnittWerke: 'Werke',
     abschnittGruppen: 'Gruppen',
-    abschnittScreens: 'ARTBOXY-Screens',
+    abschnittScreens: 'ARTBOXY-Screens und Pult',
     abschnittVorschau: 'Wandvorschau',
     abschnittStand3d: 'Stand in 3D',
-    stand3dHilfe: 'Drehen: ziehen · Zoomen: zwei Finger oder Mausrad · Wand antippen, um sie zu bearbeiten',
+    stand3dHilfe: 'Drehen: ziehen · Zoomen: zwei Finger oder Mausrad · Wand antippen, um sie zu bearbeiten · „Innen“: im Stand umschauen · „Vor die Wand“: gewählte Wand frontal',
     stand3dFehler: 'Die 3D-Ansicht konnte nicht geladen werden. Bitte Internetverbindung prüfen.',
     ansichtSchraeg: 'Schräg',
     ansichtOben: 'Von oben',
+    ansichtInnen: 'Innen',
+    ansichtWand: 'Vor die Wand',
     standBreite: 'Standbreite (cm)',
     standTiefe: 'Standtiefe (cm)',
     lageImStand: 'Lage im Stand',
@@ -108,6 +110,13 @@ export const TEXTE = {
     // Screens
     screenQuer: 'Screen quer',
     screenHoch: 'Screen hoch',
+    pult: 'Pult',
+    typPult: 'Pult',
+    pultLaenge: 'Länge (cm)',
+    pultTiefe: 'Tiefe (cm)',
+    pultHoehe: 'Höhe (cm)',
+    pultFreiraum: 'Frei links und rechts (cm)',
+    pultHilfe: 'Steht am Boden vor der Wand. Hinter dem Pult und im freien Bereich links und rechts hängt kein Werk.',
     gewicht: 'Gewicht (kg)',
     halterungOffsetVertikal: 'v: Schraubpunkte über Screenmitte (cm, + = oberhalb)',
     halterungAbstandHorizontal: 's: Abstand der Schraubpunkte (cm)',
@@ -143,6 +152,7 @@ export const TEXTE = {
     vorschauLegendeWerk: 'Werk',
     vorschauLegendeScreen: 'Screen',
     vorschauLegendePunkt: 'Befestigungspunkt',
+    vorschauLegendePult: 'Pult (Bereich bleibt frei)',
 
     // Ausstellungen und Speichern
     ausstellungWaehlen: 'Ausstellung',
@@ -203,6 +213,7 @@ export const TEXTE = {
     zuTief: 'Unterkante {unterkante} cm liegt tiefer als {minBodenabstand} cm über Boden.',
     halterungFehlt: 'Halterungsmasse (v, s) fehlen – beide Schrauben liegen in der Screenmitte.',
     screenNichtPlatziert: 'Screen ist noch nicht platziert.',
+    pultNichtPlatziert: 'Pult ist noch nicht platziert.',
   },
 };
 

@@ -57,6 +57,7 @@ function name(id) {
   if (D.findeGruppe(plan, id)) return t('gruppeName', { id });
   const screen = D.findeScreen(plan, id);
   if (screen) return screen.ausrichtung === 'hoch' ? t('screenHoch') : t('screenQuer');
+  if (D.findePult(plan, id)) return t('pult');
   const wand = D.findeWand(plan, id);
   if (wand) return wand.name?.trim() || id;
   const ort = D.findeSeite(plan, id);
@@ -74,6 +75,7 @@ function bezeichnung(h) {
 function typ(id) {
   if (D.findeWerk(plan, id)) return 'werk';
   if (D.findeGruppe(plan, id)) return 'gruppe';
+  if (D.findePult(plan, id)) return 'pult';
   return 'screen';
 }
 
@@ -119,6 +121,7 @@ function zielObjekt(art, id) {
   if (art === 'werk') return D.findeWerk(plan, id);
   if (art === 'gruppe') return D.findeGruppe(plan, id);
   if (art === 'screen') return D.findeScreen(plan, id);
+  if (art === 'pult') return D.findePult(plan, id);
   return null;
 }
 
@@ -201,7 +204,7 @@ function renderWaende() {
 function renderReihenfolge() {
   const { seite } = aktiverOrt();
   const liste = seite.elemente;
-  const typText = { werk: t('typWerk'), gruppe: t('typGruppe'), screen: t('typScreen') };
+  const typText = { werk: t('typWerk'), gruppe: t('typGruppe'), screen: t('typScreen'), pult: t('typPult') };
   const inhalt = liste.length
     ? `<ol class="reihenfolge">${liste
         .map((id) => {
@@ -328,7 +331,19 @@ function renderScreens() {
           ${feld(t('halterungAbstandHorizontal'), `screen:${s.id}:halterungAbstandHorizontal`, s.halterungAbstandHorizontal)}
         </div></article>`)
     .join('');
-  $('#screens').innerHTML = `<h2>${esc(t('abschnittScreens'))}</h2>${karten}`;
+  const pulte = (plan.pulte || [])
+    .map((p) => `<article class="karte karte-pult">
+        <header><h3>${label(p.id)}</h3></header>
+        <p class="hilfe">${esc(t('pultHilfe'))}</p>
+        <div class="felder">
+          ${platzWahl(p.id)}
+          ${feld(t('pultLaenge'), `pult:${p.id}:breite`, p.breite)}
+          ${feld(t('pultTiefe'), `pult:${p.id}:tiefe`, p.tiefe)}
+          ${feld(t('pultHoehe'), `pult:${p.id}:hoehe`, p.hoehe)}
+          ${feld(t('pultFreiraum'), `pult:${p.id}:freiraum`, p.freiraum)}
+        </div></article>`)
+    .join('');
+  $('#screens').innerHTML = `<h2>${esc(t('abschnittScreens'))}</h2>${karten}${pulte}`;
 }
 
 // --- Ergebnisse (immer für die gewählte Wandseite) -------------------------
@@ -394,6 +409,7 @@ function renderVorschau(seite) {
         <span><i class="werk"></i>${esc(t('vorschauLegendeWerk'))}</span>
         <span><i class="screen"></i>${esc(t('vorschauLegendeScreen'))}</span>
         <span><i class="punkt"></i>${esc(t('vorschauLegendePunkt'))}</span>
+        <span><i class="pult"></i>${esc(t('vorschauLegendePult'))}</span>
       </div>`
     : `<p class="leer">${esc(t('seiteNichtBespielbar'))}</p>`;
   $('#vorschau').innerHTML = `<h2>${esc(t('abschnittVorschau'))}: ${label(aktiveSeiteId)}</h2>${inhalt}`;
@@ -408,6 +424,8 @@ function renderStand3d(ergebnis) {
         <span class="h2-knoepfe">
           <button type="button" class="klein" data-ansicht="schraeg">${esc(t('ansichtSchraeg'))}</button>
           <button type="button" class="klein" data-ansicht="oben">${esc(t('ansichtOben'))}</button>
+          <button type="button" class="klein" data-ansicht="innen">${esc(t('ansichtInnen'))}</button>
+          <button type="button" class="klein" data-ansicht="wand">${esc(t('ansichtWand'))}</button>
         </span></h2>
       <div class="stand3d-rahmen" id="stand3d-rahmen"></div>
       <p class="hilfe">${esc(t('stand3dHilfe'))}</p>`;
@@ -707,7 +725,7 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('click', (e) => {
   const ansicht = e.target.closest('button[data-ansicht]');
-  if (ansicht) setzeAnsicht(plan, ansicht.dataset.ansicht);
+  if (ansicht) setzeAnsicht(plan, ansicht.dataset.ansicht, aktiveSeiteId);
   const k = e.target.closest('button[data-aktion]');
   if (k) fuehreAus(k.dataset.aktion, k.dataset.id);
 });

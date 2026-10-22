@@ -80,7 +80,7 @@ test('Wand oder Seite löschen: Elemente sind danach nicht platziert, letzte Wan
 
 test('Nicht platzierte Elemente', () => {
   const plan = beispielPlan();
-  assert.deepEqual(D.nichtPlatziert(plan), ['s-hoch']);
+  assert.deepEqual(D.nichtPlatziert(plan), ['s-hoch', 'p-pult']);
 });
 
 test('Gespeicherter Plan wird geprüft und ergänzt', () => {

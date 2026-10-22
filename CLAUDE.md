@@ -9,6 +9,8 @@ Stufe 1 (Abschnitte 3–9) ist gebaut. Danach hat Jenny entschieden:
 - **Online-Speicher mit Login**, damit alle Geräte und das Team denselben Stand sehen – gebaut: Supabase-Projekt „haengeplan“ in der Organisation ARTBOXY (Gratisplan, Region Zürich), Login mit E-Mail und Passwort, Selbst-Registrierung aus, alle Angemeldeten sehen alles. Code nur in `js/speicher.js`, Zugangsdaten in `js/config.js`, Tabelle in `supabase/einrichtung.sql`.
 - **Online erreichbar unter fester Adresse** – gebaut: https://jennyrz.github.io/haengeplan-app/ (GitHub Pages, Repo Jennyrz/haengeplan-app ist öffentlich).
 - **Handytauglich**, weil die App an Messen genutzt wird.
+- **3D-Ansicht des Stands** – gebaut: Wände haben `posX`, `posY`, `richtung` (Grundriss, siehe `js/raum.js`), Ausstellung hat `standBreite`, `standTiefe`. Ansichten: schräg, von oben, innen (Augenhöhe), vor die Wand.
+- **Pult** – gebaut: fest wie die Screens, Liste `pulte` (`breite`, `tiefe`, `hoehe`, `freiraum`). Belegt Länge + 2 × Freiraum auf der Wand, keine Befestigungspunkte.
 
 Die Einschränkungen in Abschnitt 3 („NICHT bauen: Login, Server, Datenbank, mehrere Wände“) gelten dafür nicht mehr.
 

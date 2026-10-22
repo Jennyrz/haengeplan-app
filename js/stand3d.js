@@ -47,6 +47,10 @@ function einrichten(container) {
   const camera = new THREE.PerspectiveCamera(45, 1, 5, 50000);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.maxPolarAngle = Math.PI / 2 - 0.02; // nicht unter den Boden
+  controls.zoomToCursor = true; // dorthin zoomen, wo Maus oder Finger sind
+  controls.zoomSpeed = 1.6;
+  controls.minDistance = 20;
+  controls.screenSpacePanning = true;
   controls.addEventListener('change', zeichne);
 
   const gruppe = new THREE.Group();
@@ -81,7 +85,8 @@ function einrichten(container) {
     z.onWahl?.(seite.id);
   });
 
-  z = { container, renderer, scene, camera, controls, gruppe, waende: [], planKey: null, onWahl: null };
+  // ansicht: { art: 'schraeg' | 'oben' | 'innen' | 'wand', seiteId }
+  z = { container, renderer, scene, camera, controls, gruppe, waende: [], planKey: null, onWahl: null, ansicht: { art: 'schraeg' } };
   groesse();
 }
 
@@ -174,6 +179,7 @@ function baue(plan, ergebnis, { aktiveSeiteId, name }) {
     box.position.set(w.x + (w.dx * w.laenge) / 2, hoehe / 2, w.y + (w.dy * w.laenge) / 2);
     box.rotation.y = -Math.atan2(w.dy, w.dx);
     box.userData.wand = wand;
+    box.userData.wandId = wand.id;
     const kanten = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: FARBE.kante }));
     box.add(kanten);
     gruppe.add(box);
@@ -185,6 +191,7 @@ function baue(plan, ergebnis, { aktiveSeiteId, name }) {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: schild(titel, { breite: sb, hoehe: 24, hg: '#ffffff', vg: '#1c1c1e', rand: '#8a8a85' }), depthTest: false }));
     sprite.scale.set(sb * k, 24 * k, 1);
     sprite.position.set(box.position.x, hoehe + 20 + 12 * k, box.position.z);
+    sprite.userData.wandId = wand.id;
     gruppe.add(sprite);
   }
 
@@ -199,6 +206,20 @@ function baue(plan, ergebnis, { aktiveSeiteId, name }) {
     for (const el of s.elemente) {
       for (const teil of el.teile) {
         const p = punktAufSeite(wand, idx, teil.x + teil.breite / 2);
+        if (teil.typ === 'pult') {
+          // Möbel am Boden vor der Wand, Länge entlang der Wand
+          const tiefe = teil.tiefe || 60;
+          const pult = new THREE.Mesh(
+            new THREE.BoxGeometry(teil.breite, teil.hoehe, tiefe),
+            new THREE.MeshStandardMaterial({ color: 0xc9a27a, roughness: 0.8 }),
+          );
+          pult.position.set(p.x + p.nx * (tiefe / 2 + 2), teil.hoehe / 2, p.y + p.ny * (tiefe / 2 + 2));
+          pult.rotation.y = Math.atan2(p.nx, p.ny);
+          pult.add(new THREE.LineSegments(new THREE.EdgesGeometry(pult.geometry), new THREE.LineBasicMaterial({ color: 0x8b5e34 })));
+          pult.userData.wandId = wand.id;
+          gruppe.add(pult);
+          continue;
+        }
         const istScreen = teil.typ === 'screen';
         const tex = schild(name(teil.werkId), {
           breite: teil.breite,
@@ -208,34 +229,125 @@ function baue(plan, ergebnis, { aktiveSeiteId, name }) {
           rand: istScreen ? '#0b4f4a' : '#333333',
         });
         const h = teil.oberkante - teil.hoehe / 2;
-        gruppe.add(flaeche(teil.breite, teil.hoehe, tex, p.x + p.nx * 1.5, h, p.y + p.ny * 1.5, p.nx, p.ny));
+        const bild = flaeche(teil.breite, teil.hoehe, tex, p.x + p.nx * 1.5, h, p.y + p.ny * 1.5, p.nx, p.ny);
+        bild.userData.wandId = wand.id;
+        gruppe.add(bild);
       }
       for (const pkt of el.punkte) {
         const p = punktAufSeite(wand, idx, pkt.x);
         const k = new THREE.Mesh(kugel, rot);
         k.position.set(p.x + p.nx * 3, pkt.hoehe, p.y + p.ny * 3);
+        k.userData.wandId = wand.id;
         gruppe.add(k);
       }
     }
   }
 }
 
-// Kamera so setzen, dass der ganze Stand sichtbar ist. art: 'schraeg' | 'oben'
-export function setzeAnsicht(plan, art = 'schraeg') {
+const AUGENHOEHE = 160;
+
+// Schneiden sich die Strecken a–b und c–d (im Grundriss)?
+function schneiden(a, b, c, d) {
+  const kreuz = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const d1 = kreuz(c, d, a);
+  const d2 = kreuz(c, d, b);
+  const d3 = kreuz(a, b, c);
+  const d4 = kreuz(a, b, d);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+// Blendet Wände (samt Werken und Namen) aus, die zwischen Kamera und der gezeigten Wandseite stehen
+function blendeAus(plan) {
+  const art = z.ansicht.art;
+  const versteckt = new Set();
+  const ort = art === 'wand' ? seitenOrt(plan, z.ansicht.seiteId) : null;
+  if (ort) {
+    const kamera = { x: z.camera.position.x, y: z.camera.position.z };
+    const w = wandLage(ort.wand);
+    const ziele = [0.03, 0.5, 0.97].map((f) => punktAufSeite(ort.wand, ort.idx, w.laenge * f));
+    for (const andere of plan.waende) {
+      if (andere.id === ort.wand.id) continue;
+      const l = wandLage(andere);
+      const a = { x: l.x, y: l.y };
+      const b = { x: l.x + l.dx * l.laenge, y: l.y + l.dy * l.laenge };
+      if (ziele.some((p) => schneiden(kamera, p, a, b))) versteckt.add(andere.id);
+    }
+  }
+  z.gruppe.traverse((o) => {
+    if (o.userData.wandId) o.visible = !versteckt.has(o.userData.wandId);
+  });
+}
+
+// { wand, idx } zu einer Seiten-id (idx 0 = erste Seite, 1 = Gegenseite)
+function seitenOrt(plan, seiteId) {
+  for (const wand of plan.waende) {
+    const i = wand.seiten.findIndex((s) => s.id === seiteId);
+    if (i >= 0) return { wand, idx: i === 0 ? 0 : 1 };
+  }
+  return null;
+}
+
+function steuerung({ zoom = true, verschieben = true, drehtempo = 1, polar = [0, Math.PI / 2 - 0.02] } = {}) {
+  const c = z.controls;
+  c.enableZoom = zoom;
+  c.enablePan = verschieben;
+  c.rotateSpeed = drehtempo;
+  [c.minPolarAngle, c.maxPolarAngle] = polar;
+}
+
+// Kamera setzen. art: 'schraeg' | 'oben' (ganzer Stand), 'innen' (Augenhöhe in der Standmitte),
+// 'wand' (frontal vor der Wandseite seiteId, verdeckende Wände ausgeblendet)
+export function setzeAnsicht(plan, art = 'schraeg', seiteId = null) {
   if (!z) return;
+  z.ansicht = { art, seiteId };
+  // Innen weiter Blickwinkel wie das Auge, sonst normal
+  z.camera.fov = art === 'innen' ? 75 : 45;
+  z.camera.updateProjectionMatrix();
   const u = umriss(plan);
+  const a = plan.ausstellung || {};
   const cx = (u.minX + u.maxX) / 2;
   const cy = (u.minY + u.maxY) / 2;
   const groesse = Math.max(u.maxX - u.minX, u.maxY - u.minY, 300);
-  const abstand = groesse / (2 * Math.tan((z.camera.fov * Math.PI) / 360)) * 1.15;
-  z.controls.target.set(cx, 80, cy);
-  if (art === 'oben') {
+  const halbVertikal = (z.camera.fov * Math.PI) / 360;
+  const abstand = (groesse / (2 * Math.tan(halbVertikal))) * 1.15;
+  const ort = seitenOrt(plan, seiteId);
+
+  if (art === 'innen') {
+    // Standmitte (oder Mitte aller Wände), Blick zur gewählten Wandseite
+    const mx = a.standBreite > 0 ? a.standBreite / 2 : cx;
+    const my = a.standTiefe > 0 ? a.standTiefe / 2 : cy;
+    let blick = { x: 0, y: -1 };
+    if (ort) {
+      const p = punktAufSeite(ort.wand, ort.idx, wandLage(ort.wand).laenge / 2);
+      const l = Math.hypot(p.x - mx, p.y - my) || 1;
+      blick = { x: (p.x - mx) / l, y: (p.y - my) / l };
+    }
+    z.camera.position.set(mx, AUGENHOEHE, my);
+    z.controls.target.set(mx + blick.x, AUGENHOEHE, my + blick.y);
+    steuerung({ zoom: false, verschieben: false, drehtempo: -0.4, polar: [Math.PI * 0.3, Math.PI * 0.7] });
+  } else if (art === 'wand' && ort) {
+    // So weit weg, dass die ganze Wandseite ins Bild passt, mindestens 2,5 m
+    const w = wandLage(ort.wand);
+    const p = punktAufSeite(ort.wand, ort.idx, w.laenge / 2);
+    const halbHorizontal = Math.atan(Math.tan(halbVertikal) * z.camera.aspect);
+    const d = Math.max(250, (w.laenge * 0.58) / Math.tan(halbHorizontal));
+    z.camera.position.set(p.x + p.nx * d, AUGENHOEHE, p.y + p.ny * d);
+    z.controls.target.set(p.x, 140, p.y);
+    steuerung({ polar: [Math.PI * 0.2, Math.PI / 2 - 0.02] });
+  } else if (art === 'oben') {
+    z.ansicht.art = 'oben';
     z.camera.position.set(cx, abstand + 250, cy + 0.01);
+    z.controls.target.set(cx, 80, cy);
+    steuerung();
   } else {
     // Von links vorne und recht steil, damit man in den Stand hineinsieht
+    z.ansicht.art = 'schraeg';
     z.camera.position.set(cx - groesse * 0.35, abstand * 0.9, cy + abstand * 0.55);
+    z.controls.target.set(cx, 80, cy);
+    steuerung();
   }
   z.controls.update();
+  blendeAus(plan);
   zeichne();
 }
 
@@ -252,6 +364,10 @@ export async function zeigeStand(container, plan, ergebnis, { planKey, aktiveSei
   if (z.planKey !== planKey) {
     z.planKey = planKey;
     setzeAnsicht(plan);
+  } else if (z.ansicht.art === 'wand' && z.ansicht.seiteId !== aktiveSeiteId) {
+    setzeAnsicht(plan, 'wand', aktiveSeiteId); // andere Wand angetippt: Kamera geht mit
+  } else {
+    blendeAus(plan);
   }
   zeichne();
   return true;

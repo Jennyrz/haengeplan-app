@@ -245,7 +245,28 @@ function elementAusScreen(screen, mittelhoehe) {
   };
 }
 
-// Berechnet ein Element anhand seiner id (Werk, Gruppe oder Screen).
+// Pult (Möbel am Boden, vor der Wand): keine Befestigungspunkte.
+// Es belegt seine Länge plus freiraum links und rechts; in diesem Bereich hängt kein Werk.
+function elementAusPult(pult) {
+  const kontext = { elementId: pult.id, werkId: pult.id };
+  const basis = { elementId: pult.id, typ: 'pult', ok: false, fehler: [], warnungen: [], teile: [], punkte: [], stehtAmBoden: true };
+  if (!istPositiv(pult.breite)) basis.fehler.push({ ...kontext, code: 'breiteUngueltig' });
+  if (!istPositiv(pult.hoehe)) basis.fehler.push({ ...kontext, code: 'hoeheUngueltig' });
+  if (basis.fehler.length > 0) return basis;
+  const frei = istZahl(pult.freiraum) && pult.freiraum > 0 ? pult.freiraum : 0;
+  const tiefe = istPositiv(pult.tiefe) ? pult.tiefe : 60;
+  return {
+    ...basis,
+    ok: true,
+    breite: pult.breite + 2 * frei,
+    hoehe: pult.hoehe,
+    oberkante: pult.hoehe,
+    unterkante: 0,
+    teile: [{ werkId: pult.id, typ: 'pult', xRel: frei, breite: pult.breite, hoehe: pult.hoehe, oberkante: pult.hoehe, tiefe }],
+  };
+}
+
+// Berechnet ein Element anhand seiner id (Werk, Gruppe, Screen oder Pult).
 export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
   const werk = finde(daten.werke, id);
   if (werk) return elementAusWerk(werk, mittelhoehe);
@@ -253,6 +274,8 @@ export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
   if (gruppe) return elementAusGruppe(gruppe, daten, mittelhoehe);
   const screen = finde(daten.screens, id);
   if (screen) return elementAusScreen(screen, mittelhoehe);
+  const pult = finde(daten.pulte, id);
+  if (pult) return elementAusPult(pult);
   return {
     elementId: id,
     typ: 'unbekannt',
@@ -334,7 +357,7 @@ export function berechneSeite(daten, wand, seite) {
     if (istPositiv(wand.hoehe) && el.oberkante > wand.hoehe) {
       warnungen.push({ ...kontext, code: 'zuHoch', werte: { oberkante: el.oberkante, wandhoehe: wand.hoehe } });
     }
-    if (el.unterkante < e.minBodenabstand) {
+    if (!el.stehtAmBoden && el.unterkante < e.minBodenabstand) {
       warnungen.push({ ...kontext, code: 'zuTief', werte: { unterkante: el.unterkante, minBodenabstand: e.minBodenabstand } });
     }
     const punkte = el.punkte.map((p) => ({ ...p, x: xLinks + p.xRel }));
@@ -375,7 +398,12 @@ export function berechnePlan(daten) {
   );
   const nichtPlatziert = (daten.screens || [])
     .filter((s) => !platzierteIds.has(s.id))
-    .map((s) => ({ code: 'screenNichtPlatziert', elementId: s.id, werkId: s.id }));
+    .map((s) => ({ code: 'screenNichtPlatziert', elementId: s.id, werkId: s.id }))
+    .concat(
+      (daten.pulte || [])
+        .filter((p) => !platzierteIds.has(p.id))
+        .map((p) => ({ code: 'pultNichtPlatziert', elementId: p.id, werkId: p.id })),
+    );
 
   return {
     seiten,

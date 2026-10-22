@@ -30,6 +30,9 @@ export function erzeugeVorschau(seite, { mittelhoehe, minBodenabstand, name = (i
   const vbH = r1(maxH + 2 * rand + schrift * 1.5);
 
   const teile = [];
+  const linie = r1(schrift / 2);
+  teile.push(`<defs><pattern id="sperre" width="${linie * 2}" height="${linie * 2}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="${linie * 2}" height="${linie * 2}" fill="#f6efe7"/><line x1="0" y1="0" x2="0" y2="${linie * 2}" stroke="#d8c2aa" stroke-width="${r1(linie / 1.5)}"/></pattern></defs>`);
 
   // Wand und Boden
   teile.push(`<rect x="0" y="${y(H)}" width="${r1(L)}" height="${r1(H)}" fill="#efede7" stroke="#8a8a85" stroke-width="${r1(schrift / 8)}"/>`);
@@ -48,6 +51,15 @@ export function erzeugeVorschau(seite, { mittelhoehe, minBodenabstand, name = (i
     // Gruppen: gestrichelter Rahmen ums Gesamtrechteck
     if (el.typ === 'gruppe') {
       teile.push(`<rect x="${r1(el.x)}" y="${y(el.oberkante)}" width="${r1(el.breite)}" height="${r1(el.hoehe)}" fill="none" stroke="#1d4ed8" stroke-width="${r1(schrift / 10)}" stroke-dasharray="${r1(schrift / 2)} ${r1(schrift / 3)}"/>`);
+    }
+    // Pult: freier Bereich über die ganze Wandhöhe schraffiert, Pult selbst am Boden
+    if (el.typ === 'pult') {
+      const t0 = el.teile[0];
+      teile.push(`<rect x="${r1(el.x)}" y="${y(H)}" width="${r1(el.breite)}" height="${r1(H)}" fill="url(#sperre)" stroke="#8b5e34" stroke-width="${r1(schrift / 10)}" stroke-dasharray="${r1(schrift / 2)} ${r1(schrift / 3)}"/>`);
+      teile.push(`<g><title>${esc(name(t0.werkId))}</title>
+        <rect x="${r1(t0.x)}" y="${y(t0.oberkante)}" width="${r1(t0.breite)}" height="${r1(t0.hoehe)}" fill="#c9a27a" stroke="#8b5e34" stroke-width="${r1(schrift / 7)}"/>
+        <text x="${r1(t0.x + t0.breite / 2)}" y="${r1(y(t0.hoehe / 2) + schrift / 3)}" font-size="${r1(schrift * 0.8)}" text-anchor="middle" fill="#3b2614">${esc(name(t0.werkId))}</text></g>`);
+      continue;
     }
     for (const teil of el.teile) {
       const istScreen = teil.typ === 'screen';

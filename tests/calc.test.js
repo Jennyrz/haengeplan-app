@@ -221,3 +221,21 @@ test('Screen ohne Halterungsmasse → Warnung', () => {
   const plan = berechnePlan(planMit({ laenge: 300, elemente: ['s-hoch'], screens: [SCREEN_HOCH] }));
   assert.ok(codes(plan.warnungen).includes('halterungFehlt'));
 });
+
+test('Pult belegt Länge plus Freiraum, keine Nägel, keine Bodenwarnung', () => {
+  const daten = {
+    ausstellung: { mittelhoehe: 150 },
+    waende: [{ id: 'w1', laenge: 400, hoehe: 250, seiten: [{ id: 'w1-a', elemente: ['p-pult'] }] }],
+    werke: [],
+    gruppen: [],
+    screens: [],
+    pulte: [{ id: 'p-pult', breite: 100, tiefe: 60, hoehe: 100, freiraum: 50 }],
+  };
+  const e = berechnePlan(daten);
+  const el = e.seiten[0].elemente[0];
+  assert.equal(el.breite, 200); // 50 + 100 + 50
+  assert.equal(el.x, 100); // (400 − 200) / 2
+  assert.equal(el.teile[0].x, 150); // Pult selbst
+  assert.equal(e.befestigungspunkte.length, 0);
+  assert.equal(e.warnungen.length, 0);
+});
