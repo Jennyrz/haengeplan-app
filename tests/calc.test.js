@@ -191,3 +191,33 @@ test('Gruppe ohne Werke oder mit ungültigem Werk → Fehler', () => {
   const p2 = berechnePlan(planMit({ laenge: 200, elemente: ['g2'], gruppen: [kaputt], werke: [{ id: 'x', breite: 30, hoehe: 0 }] }));
   assert.ok(codes(p2.fehler).includes('hoeheUngueltig'));
 });
+
+const SCREEN_QUER = { id: 's-quer', ausrichtung: 'quer', breite: 123.8, hoehe: 70.9, gewicht: 17, halterungOffsetVertikal: 10, halterungAbstandHorizontal: 40 };
+const SCREEN_HOCH = { id: 's-hoch', ausrichtung: 'hoch', breite: 70.9, hoehe: 123.8, gewicht: 17, halterungOffsetVertikal: 0, halterungAbstandHorizontal: 0 };
+
+test('Test 5: Screen quer', () => {
+  const plan = berechnePlan(planMit({ laenge: 300, elemente: ['s-quer'], screens: [SCREEN_QUER, SCREEN_HOCH] }));
+  const s = plan.seiten[0].elemente[0];
+  assert.equal(s.typ, 'screen');
+  nahe(s.x, 88.1, 'Screen links');
+  nahe(s.x + s.breite, 211.9, 'Screen rechts');
+  nahe(s.x + s.breite / 2, 150, 'Screen Mitte');
+  assert.equal(s.punkte.length, 2);
+  assert.ok(s.punkte.every((p) => p.art === 'schraube'));
+  nahe(s.punkte[0].hoehe, 160, 'Schraubhöhe');
+  nahe(s.punkte[0].x, 130, 'Schraube 1 x');
+  nahe(s.punkte[1].x, 170, 'Schraube 2 x');
+  assert.equal(formatCm(s.x), '88,0');
+  assert.equal(formatCm(s.x + s.breite), '212,0');
+});
+
+test('Screen nicht platziert → Warnung', () => {
+  const plan = berechnePlan(planMit({ laenge: 300, elemente: ['s-quer'], screens: [SCREEN_QUER, SCREEN_HOCH] }));
+  const w = plan.warnungen.filter((x) => x.code === 'screenNichtPlatziert');
+  assert.deepEqual(w.map((x) => x.elementId), ['s-hoch']);
+});
+
+test('Screen ohne Halterungsmasse → Warnung', () => {
+  const plan = berechnePlan(planMit({ laenge: 300, elemente: ['s-hoch'], screens: [SCREEN_HOCH] }));
+  assert.ok(codes(plan.warnungen).includes('halterungFehlt'));
+});

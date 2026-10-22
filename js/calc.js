@@ -213,12 +213,46 @@ function elementAusGruppe(gruppe, daten, mittelhoehe) {
   return { ...basis, ok: true, breite, hoehe, oberkante, unterkante: oberkante - hoehe };
 }
 
+// ARTBOXY-Screen: Mitte auf M, statt Nägeln zwei Schraubpunkte der Wandhalterung.
+// v = vertikaler Abstand der Schraubpunkte zur Screenmitte (positiv = oberhalb),
+// s = horizontaler Abstand zwischen den beiden Schraubpunkten.
+function elementAusScreen(screen, mittelhoehe) {
+  const kontext = { elementId: screen.id, werkId: screen.id };
+  const basis = { elementId: screen.id, typ: 'screen', ok: false, fehler: [], warnungen: [], teile: [], punkte: [] };
+  if (!istPositiv(screen.breite)) basis.fehler.push({ ...kontext, code: 'breiteUngueltig' });
+  if (!istPositiv(screen.hoehe)) basis.fehler.push({ ...kontext, code: 'hoeheUngueltig' });
+  if (basis.fehler.length > 0) return basis;
+
+  const v = istZahl(screen.halterungOffsetVertikal) ? screen.halterungOffsetVertikal : 0;
+  const s = istPositiv(screen.halterungAbstandHorizontal) ? screen.halterungAbstandHorizontal : 0;
+  if (s === 0) basis.warnungen.push({ ...kontext, code: 'halterungFehlt' });
+
+  const oberkante = mittelhoehe + screen.hoehe / 2;
+  const schraubHoehe = mittelhoehe + v;
+  const mitte = screen.breite / 2;
+  return {
+    ...basis,
+    ok: true,
+    breite: screen.breite,
+    hoehe: screen.hoehe,
+    oberkante,
+    unterkante: oberkante - screen.hoehe,
+    teile: [{ werkId: screen.id, typ: 'screen', xRel: 0, breite: screen.breite, hoehe: screen.hoehe, oberkante }],
+    punkte: [
+      { werkId: screen.id, nr: 1, art: 'schraube', xRel: mitte - s / 2, hoehe: schraubHoehe },
+      { werkId: screen.id, nr: 2, art: 'schraube', xRel: mitte + s / 2, hoehe: schraubHoehe },
+    ],
+  };
+}
+
 // Berechnet ein Element anhand seiner id (Werk, Gruppe oder Screen).
 export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
   const werk = finde(daten.werke, id);
   if (werk) return elementAusWerk(werk, mittelhoehe);
   const gruppe = finde(daten.gruppen, id);
   if (gruppe) return elementAusGruppe(gruppe, daten, mittelhoehe);
+  const screen = finde(daten.screens, id);
+  if (screen) return elementAusScreen(screen, mittelhoehe);
   return {
     elementId: id,
     typ: 'unbekannt',
@@ -335,9 +369,17 @@ export function berechnePlan(daten) {
       seiten.push(berechneSeite(daten, wand, seite));
     }
   }
+  // Screens, die auf keiner Wandseite stehen, sind „noch nicht platziert“.
+  const platzierteIds = new Set(
+    (daten.waende || []).flatMap((w) => (w.seiten || []).flatMap((s) => s.elemente || [])),
+  );
+  const nichtPlatziert = (daten.screens || [])
+    .filter((s) => !platzierteIds.has(s.id))
+    .map((s) => ({ code: 'screenNichtPlatziert', elementId: s.id, werkId: s.id }));
+
   return {
     seiten,
-    warnungen: seiten.flatMap((s) => s.warnungen),
+    warnungen: [...seiten.flatMap((s) => s.warnungen), ...nichtPlatziert],
     fehler: seiten.flatMap((s) => s.fehler),
     befestigungspunkte: seiten.flatMap((s) => s.befestigungspunkte),
   };
