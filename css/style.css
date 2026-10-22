@@ -333,3 +333,9 @@ button.link { background: none; border: none; color: var(--akzent); padding: 0; 
 .anleitung ol > li { margin-bottom: 8px; }
 .anleitung ul { margin: 3px 0 0; padding-left: 18px; font-size: 14px; }
 .anleitung .info { margin: 0; }
+
+/* Verborgene Werke */
+.karte.verborgen { opacity: 0.6; background: var(--hintergrund); }
+.karte.verborgen .hinweis-klein { margin: 4px 0 0; }
+.reihenfolge li.verborgen { opacity: 0.5; }
+.knoepfe-klein { display: inline-flex; gap: 6px; }

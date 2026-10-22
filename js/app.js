@@ -209,9 +209,10 @@ function renderReihenfolge() {
     ? `<ol class="reihenfolge">${liste
         .map((id) => {
           const art = typ(id);
-          return `<li data-element="${esc(id)}">
+          const versteckt = D.findeWerk(plan, id)?.verborgen;
+          return `<li data-element="${esc(id)}"${versteckt ? ' class="verborgen"' : ''}>
             <span class="marke marke-${art}">${esc(typText[art])}</span>
-            <span class="name">${label(id)}</span>
+            <span class="name">${label(id)}${versteckt ? ` <em>(${esc(t('verborgen'))})</em>` : ''}</span>
             <span class="knoepfe">
               ${knopf('hoch', '↑', { id, titel: t('nachLinks') })}
               ${knopf('runter', '↓', { id, titel: t('nachRechts') })}
@@ -232,6 +233,7 @@ function renderReihenfolge() {
 
 function werkSichtbar(w) {
   if (werkFilter === 'alle') return true;
+  if (werkFilter === 'verborgen') return Boolean(w.verborgen);
   const gruppe = D.gruppeVonWerk(plan, w.id);
   const ort = D.platzierungVon(plan, gruppe ? gruppe.id : w.id);
   if (werkFilter === 'offen') return !ort;
@@ -246,9 +248,15 @@ function renderWerke() {
       const platz = gruppe
         ? `<span class="hinweis-klein">${esc(t('inGruppe', { gruppe: name(gruppe.id) }))}</span>`
         : platzWahl(w.id);
+      const umschalten = knopf('werkVerbergen', esc(t(w.verborgen ? 'anzeigen' : 'verbergen')), { id: w.id, klasse: 'klein' });
+      if (w.verborgen) {
+        return `<article class="karte verborgen" data-werk="${esc(w.id)}">
+          <header><h3>${label(w.id)}</h3><span class="knoepfe-klein">${umschalten}</span></header>
+          <p class="hinweis-klein">${esc(t('verborgenHinweis'))}</p></article>`;
+      }
       return `<article class="karte" data-werk="${esc(w.id)}">
         <header><h3>${label(w.id)}</h3>
-          ${knopf('werkLoeschen', esc(t('loeschen')), { id: w.id, klasse: 'klein gefahr' })}</header>
+          <span class="knoepfe-klein">${umschalten}${knopf('werkLoeschen', esc(t('loeschen')), { id: w.id, klasse: 'klein gefahr' })}</span></header>
         <div class="felder">
           ${feld(t('titel'), `werk:${w.id}:titel`, w.titel, 'text')}
           ${feld(t('kuenstler'), `werk:${w.id}:kuenstler`, w.kuenstler, 'text')}
@@ -264,7 +272,7 @@ function renderWerke() {
     .join('');
   const filter = plan.werke.length
     ? `<label class="feld filter"><span>${esc(t('filter'))}</span><select data-filter="1">
-        ${[['alle', t('filterAlle')], ['seite', t('filterSeite')], ['offen', t('filterOffen')]]
+        ${[['alle', t('filterAlle')], ['seite', t('filterSeite')], ['offen', t('filterOffen')], ['verborgen', t('filterVerborgen')]]
           .map(([v, txt]) => `<option value="${v}"${v === werkFilter ? ' selected' : ''}>${esc(txt)}</option>`)
           .join('')}</select></label>`
     : '';
@@ -631,6 +639,10 @@ const aktionen = {
     const werk = D.werkHinzufuegen(plan, aktiveSeiteId);
     if (werkFilter === 'offen') werkFilter = 'alle';
     return () => document.querySelector(`[data-ziel="werk:${werk.id}:titel"]`)?.focus();
+  },
+  werkVerbergen: (id) => {
+    const werk = D.findeWerk(plan, id);
+    werk.verborgen = !werk.verborgen;
   },
   werkLoeschen: (id) => {
     if (!confirm(t('werkLoeschenFrage', { name: name(id) }))) return false;

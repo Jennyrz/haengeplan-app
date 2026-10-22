@@ -77,6 +77,11 @@ export const TEXTE = {
     // Werke
     werkHinzufuegen: '+ Werk hinzufügen',
     loeschen: 'Löschen',
+    verbergen: 'Verbergen',
+    anzeigen: 'Anzeigen',
+    verborgen: 'verborgen',
+    verborgenHinweis: 'Verborgen: wird nicht gehängt. Daten und Platz bleiben gespeichert.',
+    filterVerborgen: 'nur verborgene',
     werkLoeschenFrage: '„{name}“ wirklich löschen?',
     werkOhneTitel: 'Werk {id}',
     titel: 'Titel',

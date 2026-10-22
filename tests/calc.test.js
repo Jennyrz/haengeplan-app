@@ -292,3 +292,12 @@ test('Werke zu dicht neben dem Pult werden trotzdem gemeldet', () => {
   const e = berechnePlan(daten);
   assert.ok(e.warnungen.some((w) => w.code === 'abstandZuKlein'));
 });
+
+test('Verborgenes Werk hängt nicht, die anderen rücken zusammen', () => {
+  const verborgen = { ...WERK_TEST1, verborgen: true };
+  const plan = berechnePlan(planMit({ laenge: 400, elemente: ['A', 'B'], werke: [verborgen, WERK_TEST2] }));
+  const s = plan.seiten[0];
+  assert.deepEqual(s.elemente.map((el) => el.elementId), ['B']);
+  nahe(s.abstand, 150, 'B allein auf 400 cm');
+  assert.deepEqual(plan.fehler, []);
+});

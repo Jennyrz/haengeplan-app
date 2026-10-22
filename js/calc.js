@@ -158,6 +158,7 @@ function elementAusGruppe(gruppe, daten, mittelhoehe) {
   const g = istZahl(gruppe.innenabstand) && gruppe.innenabstand >= 0 ? gruppe.innenabstand : STANDARD.innenabstand;
 
   const zellen = [];
+  let verborgene = 0;
   for (let r = 0; r < zeilen; r++) {
     for (let c = 0; c < spalten; c++) {
       const werkId = gruppe.raster?.[r]?.[c];
@@ -167,11 +168,17 @@ function elementAusGruppe(gruppe, daten, mittelhoehe) {
         basis.fehler.push({ code: 'werkUnbekannt', elementId: gruppe.id, werkId });
         continue;
       }
+      if (werk.verborgen) {
+        verborgene++;
+        continue; // Zelle bleibt leer, das Werk behält aber seinen Platz im Raster
+      }
       const pruefung = pruefeWerk(werk);
       basis.fehler.push(...mitKontext(pruefung.fehler, { elementId: gruppe.id, werkId }));
       zellen.push({ r, c, werk });
     }
   }
+  // Alle Werke der Gruppe verborgen: Gruppe hängt nicht, ist aber kein Fehler
+  if (zellen.length === 0 && verborgene > 0 && basis.fehler.length === 0) return { ...basis, verborgen: true };
   if (zellen.length === 0 && basis.fehler.length === 0) {
     basis.fehler.push({ code: 'gruppeLeer', elementId: gruppe.id });
   }
@@ -270,6 +277,8 @@ function elementAusPult(pult) {
 // Berechnet ein Element anhand seiner id (Werk, Gruppe, Screen oder Pult).
 export function berechneElement(id, daten, mittelhoehe = STANDARD.mittelhoehe) {
   const werk = finde(daten.werke, id);
+  // Verborgenes Werk: wird nicht gehängt, behält aber seinen Platz in der Reihenfolge
+  if (werk?.verborgen) return { elementId: id, typ: 'werk', ok: false, verborgen: true, fehler: [], warnungen: [], teile: [], punkte: [] };
   if (werk) return elementAusWerk(werk, mittelhoehe);
   const gruppe = finde(daten.gruppen, id);
   if (gruppe) return elementAusGruppe(gruppe, daten, mittelhoehe);
