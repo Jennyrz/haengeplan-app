@@ -383,6 +383,25 @@ export function berechneSeite(daten, wand, seite) {
   return ergebnis;
 }
 
+// Hängeanleitung mit kurzen Massen (Lücken-Methode) für eine berechnete Wandseite.
+// Statt „x ab linker Wandkante“: Lücke zum vorherigen Element (bzw. zur Wandkante) messen,
+// dort ist die linke Kante des Elements; die Nägel liegen dann „abKante“ cm rechts davon.
+// Liefert { schritte: [{ elementId, typ, luecke, breite, teile, naegel }], rest } oder null.
+export function haengeSchritte(seite) {
+  if (!seite || !seite.elemente || seite.elemente.length === 0) return null;
+  const els = seite.elemente;
+  const schritte = els.map((el, i) => ({
+    elementId: el.elementId,
+    typ: el.typ,
+    luecke: el.x - (i === 0 ? 0 : els[i - 1].x + els[i - 1].breite),
+    breite: el.breite,
+    teile: el.teile.map((t) => ({ werkId: t.werkId, typ: t.typ, abKante: t.x - el.x, breite: t.breite })),
+    naegel: el.punkte.map((p) => ({ werkId: p.werkId, nr: p.nr, art: p.art, abKante: p.x - el.x, hoehe: p.hoehe })),
+  }));
+  const letztes = els[els.length - 1];
+  return { schritte, rest: seite.laenge - (letztes.x + letztes.breite) };
+}
+
 // Berechnet den ganzen Plan (alle Wände und bespielbaren Seiten).
 export function berechnePlan(daten) {
   const seiten = [];

@@ -1,7 +1,7 @@
 // Oberfläche: zeigt die Formulare, schreibt Eingaben in den Plan, ruft calc.js auf und zeigt die Ergebnisse.
 // Die Rechnung selbst steckt ausschliesslich in calc.js, das Speichern in speicher.js.
 
-import { berechnePlan, einstellungen, formatCm } from './calc.js';
+import { berechnePlan, einstellungen, formatCm, haengeSchritte } from './calc.js';
 import { erzeugeVorschau } from './vorschau.js';
 import { zeigeStand, setzeAnsicht } from './stand3d.js';
 import { RICHTUNGEN } from './raum.js';
@@ -374,6 +374,31 @@ function renderHinweise(ergebnis) {
   $('#hinweise').innerHTML = `<h2>${esc(t('abschnittHinweise'))}${anzahl}</h2>${liste}${weitere}`;
 }
 
+// Hängeanleitung mit kurzen Massen (Lücken-Methode)
+function anleitung(seite) {
+  const a = haengeSchritte(seite);
+  if (!a) return '';
+  const art = (code) => t(code).charAt(0).toUpperCase() + t(code).slice(1);
+  const punkte = a.schritte
+    .map((s, i) => {
+      const kopf = t(i === 0 ? 'schrittErster' : 'schrittWeiter', { luecke: s.luecke, name: name(s.elementId) });
+      let details;
+      if (s.typ === 'pult') {
+        details = [t('schrittPult', { breite: s.breite, ab: s.teile[0].abKante })];
+      } else if (s.typ === 'gruppe') {
+        details = s.naegel.map((n) => t('schrittNagelGruppe', { werk: name(n.werkId), art: art(n.art), nr: String(n.nr), ab: n.abKante, hoehe: n.hoehe }));
+      } else {
+        details = s.naegel.map((n) => t('schrittNagel', { art: art(n.art), nr: String(n.nr), ab: n.abKante, hoehe: n.hoehe }));
+      }
+      return `<li><strong>${esc(kopf)}</strong><ul>${details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></li>`;
+    })
+    .join('');
+  return `<div class="anleitung"><h3>${esc(t('abschnittAnleitung'))}</h3>
+    <p class="hilfe">${esc(t('anleitungHilfe'))}</p>
+    <ol>${punkte}</ol>
+    <p class="info">${esc(t('schrittRest', { rest: a.rest }))}</p></div>`;
+}
+
 function renderTabelle(seite) {
   const abstand = seite && seite.abstand != null ? `<p class="info">${esc(t('abstandInfo', { abstand: seite.abstand }))}</p>` : '';
   const gruppen = (seite?.elemente || [])
@@ -393,7 +418,7 @@ function renderTabelle(seite) {
           <th class="zahl"><span class="lang">${esc(t('spalteHoehe'))}</span><span class="kurz">${esc(t('spalteHoeheKurz'))}</span></th></tr></thead>
         ${gruppen}</table></div>`
     : `<p class="leer">${esc(t('keinePunkte'))}</p>`;
-  $('#ergebnis').innerHTML = `<h2>${esc(t('abschnittErgebnis'))}: ${label(aktiveSeiteId)}</h2>${abstand}${tabelle}`;
+  $('#ergebnis').innerHTML = `<h2>${esc(t('abschnittErgebnis'))}: ${label(aktiveSeiteId)}</h2>${abstand}${anleitung(seite)}${tabelle}`;
 }
 
 function renderVorschau(seite) {

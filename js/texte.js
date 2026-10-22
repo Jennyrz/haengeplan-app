@@ -44,6 +44,14 @@ export const TEXTE = {
     richtung180: '← nach links',
     richtung270: '↑ nach oben',
     abschnittHinweise: 'Hinweise',
+    abschnittAnleitung: 'So hängst du diese Wand',
+    anleitungHilfe: 'Mit kurzen Massen: Lücke abmessen, dort ist die linke Kante. Die Nägel liegen dann rechts davon.',
+    schrittErster: '{luecke} cm ab linker Wandkante → linke Kante von „{name}“',
+    schrittWeiter: '{luecke} cm Lücke → linke Kante von „{name}“',
+    schrittNagel: '{art} {nr}: {ab} cm rechts der Kante, Höhe {hoehe} cm',
+    schrittNagelGruppe: '„{werk}“ · {art} {nr}: {ab} cm rechts der Gruppenkante, Höhe {hoehe} cm',
+    schrittPult: 'Hier beginnt der freie Bereich des Pults ({breite} cm, kein Werk). Pult {ab} cm rechts davon aufstellen.',
+    schrittRest: 'Kontrolle: Zur rechten Wandkante bleiben {rest} cm.',
     abschnittErgebnis: 'Befestigungspunkte',
 
     // Ausstellung und Wand

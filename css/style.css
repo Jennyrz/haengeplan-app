@@ -325,3 +325,11 @@ button.link { background: none; border: none; color: var(--akzent); padding: 0; 
 @media (max-width: 700px) { .stand3d-rahmen { height: 340px; } }
 .h2-knoepfe { margin-left: auto; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .stand3d-rahmen + .hilfe { margin: 6px 0 0; }
+
+/* Hängeanleitung (Lücken-Methode) */
+.anleitung { margin: 10px 0 14px; padding: 12px; background: var(--akzent-leise); border-radius: var(--radius); }
+.anleitung h3 { margin-bottom: 4px; }
+.anleitung ol { margin: 8px 0; padding-left: 22px; }
+.anleitung ol > li { margin-bottom: 8px; }
+.anleitung ul { margin: 3px 0 0; padding-left: 18px; font-size: 14px; }
+.anleitung .info { margin: 0; }

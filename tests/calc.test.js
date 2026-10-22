@@ -1,7 +1,7 @@
 // Automatische Tests für js/calc.js. Ausführen mit: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { berechneEinzelwerk, berechnePlan, formatCm, rundeAufHalbe } from '../js/calc.js';
+import { berechneEinzelwerk, berechnePlan, formatCm, haengeSchritte, rundeAufHalbe } from '../js/calc.js';
 
 // Vergleich mit kleiner Toleranz, weil Kommazahlen im Computer nicht immer exakt sind.
 function nahe(ist, soll, text) {
@@ -238,4 +238,14 @@ test('Pult belegt Länge plus Freiraum, keine Nägel, keine Bodenwarnung', () =>
   assert.equal(el.teile[0].x, 150); // Pult selbst
   assert.equal(e.befestigungspunkte.length, 0);
   assert.equal(e.warnungen.length, 0);
+});
+
+test('Hängeanleitung (Lücken-Methode) zu Test 3: kurze Masse statt x ab Wandkante', () => {
+  const plan = berechnePlan(planMit({ laenge: 400, elemente: ['A', 'B'], werke: [WERK_TEST1, WERK_TEST2] }));
+  const { schritte, rest } = haengeSchritte(plan.seiten[0]);
+  nahe(schritte[0].luecke, 80, 'A: 80 cm ab linker Wandkante');
+  nahe(schritte[0].naegel[0].abKante, 30, 'A: Nagel 30 cm rechts der Bildkante');
+  nahe(schritte[1].luecke, 80, 'B: 80 cm Lücke nach A');
+  assert.deepEqual(schritte[1].naegel.map((n) => n.abKante), [20, 80]);
+  nahe(rest, 80, 'Kontrolle: 80 cm bis zur rechten Wandkante');
 });
