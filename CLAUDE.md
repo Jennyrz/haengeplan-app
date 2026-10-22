@@ -6,8 +6,8 @@ Stufe 1 (Abschnitte 3–9) ist gebaut. Danach hat Jenny entschieden:
 - **Mehrere Wände mit mehreren Seiten** (innen/aussen) – gebaut.
 - **Mehrere Ausstellungen** in der App (anlegen, wechseln, duplizieren, löschen) – gebaut.
 - **Kein JSON-Export/-Import in der Oberfläche**, keine Hardware-Anbindung. Das Datenformat (Abschnitt 7) bleibt trotzdem das interne Format.
-- **Online-Speicher mit Login**, damit alle Geräte und das Team denselben Stand sehen (geplant: Supabase). Austausch nur in `js/speicher.js`.
-- **Online erreichbar unter fester Adresse** (geplant: GitHub Pages).
+- **Online-Speicher mit Login**, damit alle Geräte und das Team denselben Stand sehen – gebaut: Supabase-Projekt „haengeplan“ in der Organisation ARTBOXY (Gratisplan, Region Zürich), Login mit E-Mail und Passwort, Selbst-Registrierung aus, alle Angemeldeten sehen alles. Code nur in `js/speicher.js`, Zugangsdaten in `js/config.js`, Tabelle in `supabase/einrichtung.sql`.
+- **Online erreichbar unter fester Adresse** – gebaut: https://jennyrz.github.io/haengeplan-app/ (GitHub Pages, Repo Jennyrz/haengeplan-app ist öffentlich).
 - **Handytauglich**, weil die App an Messen genutzt wird.
 
 Die Einschränkungen in Abschnitt 3 („NICHT bauen: Login, Server, Datenbank, mehrere Wände“) gelten dafür nicht mehr.

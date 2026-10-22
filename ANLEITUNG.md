@@ -2,35 +2,33 @@
 
 Die App berechnet für jedes Werk, wo genau der Nagel hinkommt: **x ab der linken Wandkante** (so wie man vor der Wand steht) und **Höhe ab Boden**, beide in cm.
 
-## 1. App starten
+## 1. App öffnen
 
-Im Terminal:
+Auf jedem Gerät (Laptop, Handy, Tablet) im Browser: **https://jennyrz.github.io/haengeplan-app/**
+
+Anmelden mit E-Mail und Passwort. Tipp fürs Handy: Seite zum Home-Bildschirm hinzufügen (Safari: Teilen → „Zum Home-Bildschirm“).
+
+### Neue Person ins Team holen
+
+Im Supabase-Projekt **haengeplan** (Organisation ARTBOXY): Authentication → Users → **Add user**
+- „Send invitation“: Die Person bekommt eine E-Mail, klickt den Link und legt in der App ihr Passwort fest.
+- oder „Create new user“ mit E-Mail, Passwort und Haken bei „Auto Confirm User“.
+
+Selbst registrieren kann sich niemand. Alle Angemeldeten sehen und bearbeiten alle Ausstellungen.
+Passwort vergessen: in der App auf „Passwort vergessen?“ tippen.
+
+### Änderungen am Programm veröffentlichen
+
+Der Code liegt auf GitHub (Jennyrz/haengeplan-app, öffentlich – eure Daten liegen nicht dort, sondern geschützt in Supabase). Nach `git push` ist die neue Version in 1–2 Minuten online.
+
+### Lokal ausprobieren (für Programmänderungen)
 
 ```bash
 cd ~/"ARTBOX.GROUPS GmbH Dropbox/Jenny-Rose Zenklusen/haengeplan-app"
 python3 -m http.server 8000
 ```
 
-Dann im Browser öffnen: **http://localhost:8000**
-
-Beenden: im Terminal `Ctrl + C`.
-
-> Warum ein Server? Der Browser lädt die Programmteile (`calc.js` usw.) aus Sicherheitsgründen nur über eine Webadresse, nicht per Doppelklick auf `index.html`.
-
-### Auf dem Handy (z. B. an der Messe)
-
-1. Laptop und Handy im **selben WLAN** (oder Handy-Hotspot, mit dem sich der Laptop verbindet).
-2. Server auf dem Laptop wie oben starten.
-3. IP-Adresse des Laptops herausfinden:
-   ```bash
-   ipconfig getifaddr en0
-   ```
-4. Auf dem Handy im Browser öffnen: `http://<diese-Adresse>:8000`, z. B. `http://192.168.1.23:8000`
-5. Fragt der Mac, ob „python3“ eingehende Verbindungen erlauben darf: **Erlauben**.
-
-Unten auf dem Handy gibt es eine Leiste, um direkt zu **Eingaben**, **Vorschau** oder **Nägel** (Liste der Befestigungspunkte) zu springen.
-
-**Wichtig (bis der Online-Speicher eingerichtet ist):** Jeder Browser speichert seine eigenen Ausstellungen. Laptop und Handy sehen also noch nicht denselben Stand.
+Dann **http://localhost:8000** öffnen. Auch lokal wird online in Supabase gespeichert (dieselben Daten wie online).
 
 ## 2. Tests ausführen
 
@@ -69,7 +67,7 @@ Am Ende muss `fail 0` stehen. Die Tests prüfen alle Testfälle aus `CLAUDE.md` 
 
 Alles wird **automatisch gespeichert**, kurz nach jeder Änderung (oben steht „Gespeichert“). Es gibt keinen Speichern-Knopf.
 
-Im Moment liegt alles im Browser des jeweiligen Geräts. Sobald der Online-Speicher eingerichtet ist, sehen alle Geräte und das ganze Team denselben Stand.
+Gespeichert wird online (Supabase). Alle Geräte und das ganze Team sehen denselben Stand – nach dem Neuladen der Seite. Bearbeiten zwei Personen gleichzeitig dieselbe Ausstellung, gilt die zuletzt gespeicherte Änderung. Ohne Internet erscheint „Speichern fehlgeschlagen!“.
 
 ## 5. Ordnerstruktur
 
