@@ -264,3 +264,31 @@ test('Hängeanleitung: nach dem Pult wird ab dem Pult selbst gemessen, nicht ab 
   nahe(schritte[0].pultAb, a + 50, 'linke Pultkante ab Wandkante');
   nahe(schritte[1].naegel[0].ab, 50 + a + 30, 'Nagel ab rechter Pultkante: Freiraum + Abstand + halbe Bildbreite');
 });
+
+test('Pult allein auf kurzer Wand: freier Bereich zählt als Abstand, keine Warnung', () => {
+  const daten = {
+    ausstellung: { mittelhoehe: 150, mindestabstand: 10 },
+    waende: [{ id: 'w1', laenge: 150, hoehe: 250, seiten: [{ id: 'w1-a', elemente: ['p-pult'] }] }],
+    werke: [],
+    gruppen: [],
+    screens: [],
+    pulte: [{ id: 'p-pult', breite: 100, tiefe: 60, hoehe: 100, freiraum: 25 }],
+  };
+  const e = berechnePlan(daten);
+  assert.equal(e.seiten[0].abstand, 0);
+  assert.deepEqual(e.warnungen, []);
+});
+
+test('Werke zu dicht neben dem Pult werden trotzdem gemeldet', () => {
+  const daten = {
+    ausstellung: { mittelhoehe: 150, mindestabstand: 10 },
+    waende: [{ id: 'w1', laenge: 266, hoehe: 250, seiten: [{ id: 'w1-a', elemente: ['A', 'p-pult'] }] }],
+    werke: [WERK_TEST1],
+    gruppen: [],
+    screens: [],
+    pulte: [{ id: 'p-pult', breite: 100, tiefe: 60, hoehe: 100, freiraum: 50 }],
+  };
+  // 60 + 200 = 260 auf 266 cm: Abstand 2 cm; zwischen Wandkante und Werk nur 2 cm → Warnung
+  const e = berechnePlan(daten);
+  assert.ok(e.warnungen.some((w) => w.code === 'abstandZuKlein'));
+});

@@ -262,6 +262,7 @@ function elementAusPult(pult) {
     hoehe: pult.hoehe,
     oberkante: pult.hoehe,
     unterkante: 0,
+    freiraum: frei,
     teile: [{ werkId: pult.id, typ: 'pult', xRel: frei, breite: pult.breite, hoehe: pult.hoehe, oberkante: pult.hoehe, tiefe }],
   };
 }
@@ -344,10 +345,15 @@ export function berechneSeite(daten, wand, seite) {
   const { abstand, positionen } = verteile(platziert.map((el) => el.breite), wand.laenge);
   ergebnis.abstand = abstand;
 
+  // Der freie Bereich eines Pults zählt als Abstand zu seinen Nachbarn bzw. zur Wandkante.
+  const frei = (el) => (el && el.freiraum) || 0;
+  const kleinsterAbstand = Math.min(
+    ...Array.from({ length: platziert.length + 1 }, (_, i) => abstand + frei(platziert[i - 1]) + frei(platziert[i])),
+  );
   if (abstand < 0) {
     warnungen.push({ ...ort, code: 'passtNicht', werte: { abstand } });
-  } else if (abstand < e.mindestabstand) {
-    warnungen.push({ ...ort, code: 'abstandZuKlein', werte: { abstand, mindestabstand: e.mindestabstand } });
+  } else if (kleinsterAbstand < e.mindestabstand) {
+    warnungen.push({ ...ort, code: 'abstandZuKlein', werte: { abstand: kleinsterAbstand, mindestabstand: e.mindestabstand } });
   }
 
   platziert.forEach((el, i) => {
