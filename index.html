@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hängeplan</title>
   <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <header class="kopf">
@@ -27,6 +35,7 @@
       <section id="screens"></section>
     </div>
     <div class="ergebnisse">
+      <section id="stand3d"></section>
       <section id="vorschau"></section>
       <section id="hinweise"></section>
       <section id="ergebnis"></section>
@@ -35,6 +44,7 @@
 
   <nav class="sprungleiste" id="sprungleiste" aria-label="Navigation" hidden>
     <a href="#eingaben" data-text="navEingaben"></a>
+    <a href="#stand3d" data-text="navStand"></a>
     <a href="#vorschau" data-text="navVorschau"></a>
     <a href="#ergebnis" data-text="navPunkte"></a>
   </nav>

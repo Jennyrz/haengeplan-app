@@ -11,7 +11,8 @@ export const TEXTE = {
 
     // Navigation (Handy)
     navEingaben: 'Eingaben',
-    navVorschau: 'Vorschau',
+    navStand: '3D',
+    navVorschau: 'Wand',
     navPunkte: 'Nägel',
 
     // Abschnitte
@@ -24,6 +25,22 @@ export const TEXTE = {
     abschnittGruppen: 'Gruppen',
     abschnittScreens: 'ARTBOXY-Screens',
     abschnittVorschau: 'Wandvorschau',
+    abschnittStand3d: 'Stand in 3D',
+    stand3dHilfe: 'Drehen: ziehen · Zoomen: zwei Finger oder Mausrad · Wand antippen, um sie zu bearbeiten',
+    stand3dFehler: 'Die 3D-Ansicht konnte nicht geladen werden. Bitte Internetverbindung prüfen.',
+    ansichtSchraeg: 'Schräg',
+    ansichtOben: 'Von oben',
+    standBreite: 'Standbreite (cm)',
+    standTiefe: 'Standtiefe (cm)',
+    lageImStand: 'Lage im Stand',
+    lageHilfe: 'Gemessen auf dem Plan von oben, ab der oberen linken Standecke. Start = linkes Ende der Wand, wenn man vor der ersten Seite steht.',
+    wandPosX: 'Start X (cm, nach rechts)',
+    wandPosY: 'Start Y (cm, nach unten)',
+    wandRichtung: 'Richtung (auf dem Plan)',
+    richtung0: '→ nach rechts',
+    richtung90: '↓ nach unten',
+    richtung180: '← nach links',
+    richtung270: '↑ nach oben',
     abschnittHinweise: 'Hinweise',
     abschnittErgebnis: 'Befestigungspunkte',
 

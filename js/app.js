@@ -3,6 +3,8 @@
 
 import { berechnePlan, einstellungen, formatCm } from './calc.js';
 import { erzeugeVorschau } from './vorschau.js';
+import { zeigeStand, setzeAnsicht } from './stand3d.js';
+import { RICHTUNGEN } from './raum.js';
 import { t } from './texte.js';
 import * as D from './daten.js';
 import * as S from './speicher.js';
@@ -151,6 +153,8 @@ function renderAusstellung() {
       ${feld(t('mittelhoehe'), 'ausstellung::mittelhoehe', a.mittelhoehe)}
       ${feld(t('mindestabstand'), 'ausstellung::mindestabstand', a.mindestabstand)}
       ${feld(t('minBodenabstand'), 'ausstellung::minBodenabstand', a.minBodenabstand)}
+      ${feld(t('standBreite'), 'ausstellung::standBreite', a.standBreite)}
+      ${feld(t('standTiefe'), 'ausstellung::standTiefe', a.standTiefe)}
     </div>`;
 }
 
@@ -170,6 +174,15 @@ function renderWaende() {
       ${feld(t('wandName'), `wand:${wand.id}:name`, wand.name, 'text')}
       ${feld(t('wandLaenge'), `wand:${wand.id}:laenge`, wand.laenge)}
       ${feld(t('wandHoehe'), `wand:${wand.id}:hoehe`, wand.hoehe)}
+    </div>
+    <div class="seiten-block">
+      <span class="unterlabel">${esc(t('lageImStand'))}</span>
+      <p class="hilfe">${esc(t('lageHilfe'))}</p>
+      <div class="felder">
+        ${feld(t('wandPosX'), `wand:${wand.id}:posX`, wand.posX)}
+        ${feld(t('wandPosY'), `wand:${wand.id}:posY`, wand.posY)}
+        ${auswahl(t('wandRichtung'), `wand:${wand.id}:richtung`, wand.richtung, RICHTUNGEN.map((r) => [r, t(`richtung${r}`)]), 'zahl')}
+      </div>
     </div>
     <div class="seiten-block">
       <span class="unterlabel">${esc(t('seiten'))}</span>
@@ -386,9 +399,36 @@ function renderVorschau(seite) {
   $('#vorschau').innerHTML = `<h2>${esc(t('abschnittVorschau'))}: ${label(aktiveSeiteId)}</h2>${inhalt}`;
 }
 
+// Die 3D-Ansicht wird nur einmal angelegt und danach nur aktualisiert (Kamera bleibt, wie sie ist).
+function renderStand3d(ergebnis) {
+  const bereich = $('#stand3d');
+  if (!bereich.dataset.bereit) {
+    bereich.dataset.bereit = '1';
+    bereich.innerHTML = `<h2>${esc(t('abschnittStand3d'))}
+        <span class="h2-knoepfe">
+          <button type="button" class="klein" data-ansicht="schraeg">${esc(t('ansichtSchraeg'))}</button>
+          <button type="button" class="klein" data-ansicht="oben">${esc(t('ansichtOben'))}</button>
+        </span></h2>
+      <div class="stand3d-rahmen" id="stand3d-rahmen"></div>
+      <p class="hilfe">${esc(t('stand3dHilfe'))}</p>`;
+  }
+  zeigeStand($('#stand3d-rahmen'), plan, ergebnis, {
+    planKey: planId,
+    aktiveSeiteId,
+    name,
+    onWahl: (seiteId) => {
+      aktiveSeiteId = seiteId;
+      renderAlles();
+    },
+  }).then((ok) => {
+    if (!ok) $('#stand3d-rahmen').innerHTML = `<p class="leer">${esc(t('stand3dFehler'))}</p>`;
+  });
+}
+
 function renderErgebnis() {
   const ergebnis = berechnePlan(plan);
   const seite = ergebnis.seiten.find((s) => s.seiteId === aktiveSeiteId);
+  renderStand3d(ergebnis);
   renderVorschau(seite);
   renderHinweise(ergebnis);
   renderTabelle(seite);
@@ -666,6 +706,8 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  const ansicht = e.target.closest('button[data-ansicht]');
+  if (ansicht) setzeAnsicht(plan, ansicht.dataset.ansicht);
   const k = e.target.closest('button[data-aktion]');
   if (k) fuehreAus(k.dataset.aktion, k.dataset.id);
 });

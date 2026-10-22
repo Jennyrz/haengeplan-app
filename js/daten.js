@@ -3,6 +3,7 @@
 // Jedes Element (Werk, Gruppe, Screen) steht auf höchstens einer Wandseite.
 
 import { STANDARD } from './calc.js';
+import { lageFuerNeueWand } from './raum.js';
 
 export const FORMAT_VERSION = 1;
 
@@ -14,8 +15,9 @@ function neueSeite(wandId, buchstabe, bezeichnung) {
   return { id: `${wandId}-${buchstabe}`, bezeichnung, bespielbar: true, elemente: [] };
 }
 
-function neueWand(id, name) {
-  return { id, name, laenge: WAND_VORLAGE.laenge, hoehe: WAND_VORLAGE.hoehe, seiten: [neueSeite(id, 'a', 'innen')] };
+// lage: { posX, posY, richtung } im Grundriss (siehe raum.js)
+function neueWand(id, name, lage = { posX: 0, posY: 0, richtung: 0 }) {
+  return { id, name, laenge: WAND_VORLAGE.laenge, hoehe: WAND_VORLAGE.hoehe, ...lage, seiten: [neueSeite(id, 'a', 'innen')] };
 }
 
 export function neuerPlan(name = '') {
@@ -141,7 +143,7 @@ export function verschiebe(plan, id, richtung) {
 
 export function wandHinzufuegen(plan) {
   const id = naechsteId(plan, 'w');
-  const wand = neueWand(id, `Wand ${plan.waende.length + 1}`);
+  const wand = neueWand(id, `Wand ${plan.waende.length + 1}`, lageFuerNeueWand(plan));
   plan.waende.push(wand);
   return wand;
 }
@@ -270,6 +272,13 @@ export function normalisierePlan(roh) {
 
   const istListe = (x) => Array.isArray(x);
   plan.waende = istListe(plan.waende) && plan.waende.length ? plan.waende : leer.waende;
+  // Ältere Pläne kennen die Lage im Stand noch nicht: Wände nebeneinander aufstellen
+  const mitLage = [];
+  for (const wand of plan.waende) {
+    if (typeof wand.posX !== 'number' || typeof wand.posY !== 'number') Object.assign(wand, lageFuerNeueWand({ waende: mitLage }));
+    if (typeof wand.richtung !== 'number') wand.richtung = 0;
+    mitLage.push(wand);
+  }
   for (const wand of plan.waende) {
     if (!istListe(wand.seiten) || wand.seiten.length === 0) wand.seiten = [neueSeite(wand.id, 'a', 'innen')];
     for (const seite of wand.seiten) {
