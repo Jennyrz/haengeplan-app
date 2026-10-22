@@ -1,4 +1,4 @@
-// Automatische Tests für js/calc.js. Ausführen mit: npm test  (oder: node --test tests/)
+// Automatische Tests für js/calc.js. Ausführen mit: npm test  (oder: node --test tests/*.test.js)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
