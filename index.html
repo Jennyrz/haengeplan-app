@@ -7,7 +7,38 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>Hängeplan</h1>
+  <header class="kopf">
+    <div>
+      <h1 data-text="appTitel">Hängeplan</h1>
+      <p class="untertitel" data-text="untertitel"></p>
+    </div>
+    <div class="werkzeuge" id="werkzeuge"></div>
+  </header>
+
+  <main class="layout">
+    <div class="eingaben" id="eingaben">
+      <div class="zweispaltig">
+        <section id="ausstellung"></section>
+        <section id="wand"></section>
+      </div>
+      <section id="reihenfolge"></section>
+      <section id="werke"></section>
+      <section id="gruppen"></section>
+      <section id="screens"></section>
+    </div>
+    <div class="ergebnisse">
+      <section id="vorschau"></section>
+      <section id="hinweise"></section>
+      <section id="ergebnis"></section>
+    </div>
+  </main>
+
+  <nav class="sprungleiste" aria-label="Navigation">
+    <a href="#eingaben" data-text="navEingaben"></a>
+    <a href="#vorschau" data-text="navVorschau"></a>
+    <a href="#ergebnis" data-text="navPunkte"></a>
+  </nav>
+
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
